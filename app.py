@@ -2366,22 +2366,21 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                 if source == "Только персональная библиотека":
                     if not os.path.exists(PERSONAL_CSV):
                         return "Персональная библиотека пуста.", None
-                    try:
-                        df_pers = pd.read_csv(PERSONAL_CSV, encoding="utf-8")
-                    except Exception:
-                        return "Не удалось прочитать персональную библиотеку.", None
-                    if df_pers.empty:
-                        return "Персональная библиотека пуста.", None
+                try:
+                    df_pers = pd.read_csv(PERSONAL_CSV, encoding="utf-8")
+                except Exception:
+                    return "Не удалось прочитать персональную библиотеку.", None
+                if df_pers.empty:
+                    return "Персональная библиотека пуста.", None
 
-                    df_pers = df_pers.rename(columns={"text": "word"})
-                    df_pers["sphere"] = "прочее"
-                    df_pers["tone"] = "neutral"
-                    df_pers["allowed"] = True
-                    df_pers["notes"] = ""
+                df_pers = df_pers.rename(columns={"text": "word"})
+                df_pers["sphere"] = "прочее"
+                df_pers["tone"] = "neutral"
+                df_pers["allowed"] = True
+                df_pers["notes"] = ""
 
-                    df = df_pers[["word","sphere","tone","allowed","notes","l1","l2c","w","C","Hm","Z"]].copy()
+                df = df_pers[["word","sphere","tone","allowed","notes","l1","l2c","w","C","Hm","Z"]].copy()
 
-                else:
                     # Вся библиотека
                     _ensure_lib_loaded()
                     df = LIB_DF.copy() if LIB_DF is not None else pd.DataFrame()
@@ -2411,23 +2410,22 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
 
                 # Формируем список элементов
                 items = []
-                try:
-                    for _, r in df.iterrows():
-                        items.append({
-                            "word": str(r.get("word", "")).upper(),
-                            "sphere": str(r.get("sphere", "прочее")),
-                            "tone": str(r.get("tone", "neutral")),
-                            "allowed": bool(r.get("allowed", True)),
-                            "field": str(r.get("field", "")).strip(),
-                            "role":  str(r.get("role", "")).strip(),
-                            "notes": "" if pd.isna(r.get("notes")) else str(r.get("notes")).strip(),
-                            "l1": int(float(r.get("l1", 0))) if not pd.isna(r.get("l1")) else 0,
-                            "l2c": int(float(r.get("l2c", 0))) if not pd.isna(r.get("l2c")) else 0,
-                            "w": float(r.get("w", 0.0)) if not pd.isna(r.get("w")) else 0.0,
-                            "C": float(r.get("C", 0.0)) if not pd.isna(r.get("C")) else 0.0,
-                            "Hm": float(r.get("Hm", 0.0)) if not pd.isna(r.get("Hm")) else 0.0,
-                            "Z": float(r.get("Z", 0.0)) if not pd.isna(r.get("Z")) else 0.0,
-                        })
+                for _, r in df.iterrows()
+                    items.append({
+                        "word": str(r.get("word", "")).upper(),
+                        "sphere": str(r.get("sphere", "прочее")),
+                        "tone": str(r.get("tone", "neutral")),
+                        "allowed": bool(r.get("allowed", True)),
+                        "field": str(r.get("field", "")).strip(),
+                        "role":  str(r.get("role", "")).strip(),
+                        "notes": "" if pd.isna(r.get("notes")) else str(r.get("notes")).strip(),
+                        "l1": int(float(r.get("l1", 0))) if not pd.isna(r.get("l1")) else 0,
+                        "l2c": int(float(r.get("l2c", 0))) if not pd.isna(r.get("l2c")) else 0,
+                        "w": float(r.get("w", 0.0)) if not pd.isna(r.get("w")) else 0.0,
+                        "C": float(r.get("C", 0.0)) if not pd.isna(r.get("C")) else 0.0,
+                        "Hm": float(r.get("Hm", 0.0)) if not pd.isna(r.get("Hm")) else 0.0,
+                        "Z": float(r.get("Z", 0.0)) if not pd.isna(r.get("Z")) else 0.0,
+                    })
                 except Exception:
                     return "Ошибка преобразования данных.", None
 
