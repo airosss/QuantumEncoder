@@ -1062,6 +1062,10 @@ def force_recalc_row(
 
     w, C, Hm, Z = metrics(int(l1), int(l2c))
 
+    notes_str = "" if notes is None else str(notes).strip()
+    if notes_str.lower() == "nan":
+        notes_str = ""
+
     return {
         "word": word,
         "sphere": sphere,
@@ -1069,7 +1073,7 @@ def force_recalc_row(
         "allowed": bool(allowed),
         "field": (field or "").strip(),
         "role": (role or "").strip(),
-        "notes": ("" if notes is None else str(notes)),
+        "notes": notes_str,
         "l1": int(l1),
         "l2c": int(l2c),
         "w": float(w),
