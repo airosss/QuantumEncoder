@@ -322,7 +322,7 @@ def calc_l1_from_string(s:str):
     return w, sum(KRYON_MAP.get(ch,0) for ch in w)
 
 def metrics(l1:int,l2c:int):
-    w = l2c / max(l1, 1)
+    w = l2c / l1
     ratio = abs(l2c - l1) / (l2c + l1)
     C  = math.cos(math.pi/2 * ratio)**2
     targets = [1, 1.25, 1.33, 1.5, 2, 3]
