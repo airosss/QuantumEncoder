@@ -1106,9 +1106,7 @@ def soft_dedup(df: pd.DataFrame) -> pd.DataFrame:
             return ""
         return vals[0] if len(vals) == 1 else ";".join(vals)
 
-    agg = df.groupby("word", as_index=False).agg({
-        "sphere":  lambda s: uniq(s, ";"),
-        "tone":    lambda s: uniq(s, ";"),
+    agg = df.groupby(["word","sphere","tone"], as_index=False).agg({
         "allowed": lambda s: any(bool(x) for x in s),
         "field":   lambda s: pick_or_join(s),
         "role":    lambda s: pick_or_join(s),
