@@ -1798,7 +1798,7 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                 # сохраняем для добавления в библиотеку
                 LAST_RESULT.clear()
                 LAST_RESULT.update({
-                    "input": w1,
+                    "input": (res1.get("raw") if res1.get("fa_mode") else w1),
                     "phrase_used": res1['phrase_used'],
                     "l1": res1['l1'],
                     "l2c": res1['l2c'],
