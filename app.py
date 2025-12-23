@@ -1016,7 +1016,7 @@ def add_to_personal():
     if already_in_personal(text,phrase):
         with MUTEX:
             msg = commit_ops([PERSONAL_CSV, os.path.join(PERSONAL_DIR,".keep")], "Ensure personal in repo")
-        return f"Уже в персональной. {msg}", gr.update(value=compute_base_indicator())
+        return (f"Уже в персональной. {msg}", gr.update(value=compute_base_indicator()))
     df = pd.read_csv(PERSONAL_CSV, encoding="utf-8")
     df.loc[len(df)] = [text, phrase, int(l1), int(l2c), float(f"{w:.6f}"),
                        float(f"{C:.6f}"), float(f"{Hm:.6f}"), float(f"{Z:.6f}"),
@@ -1024,7 +1024,7 @@ def add_to_personal():
     atomic_write_csv(df, PERSONAL_CSV)
     with MUTEX:
         msg = commit_ops([PERSONAL_CSV, os.path.join(PERSONAL_DIR,".keep")], "Update personal.csv")
-    return f"Добавлено: «{text}». {msg}", gr.update(value=compute_base_indicator())
+    return (f"Добавлено: «{text}». {msg}", gr.update(value=compute_base_indicator()))
 
 def slugify(title:str)->str:
     m = {"А":"A","Б":"B","В":"V","Г":"G","Д":"D","Е":"E","Ё":"E","Ж":"Zh","З":"Z","И":"I","Й":"Y",
