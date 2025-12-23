@@ -336,6 +336,37 @@ def parse_date_phrase(text:str)->Tuple[Optional[str], Optional[str]]:
     return date_to_phrase_official(d,mo,y), f"{y:04d}{mo:02d}{d:02d}"
 
 # =========================
+#  Классификация TokenKind
+# =========================
+def detect_token_kind(token: str, is_date_phrase: bool, is_fa: bool) -> str:
+    """
+    Определяет системный признак TokenKind для токена.
+    
+    TokenKind — чистое метаполе (контекст), не влияющее на расчёты Kryon-метрик.
+    Используется в QP/QPM, Semantic Post-Processor, нормализации, Month Passport.
+    
+    Параметры:
+        token: нормализованный токен (строка)
+        is_date_phrase: True если токен распознан как дата через parse_date_phrase
+        is_fa: True если токен является FractalAvatar/синтетическим
+    
+    Возвращает:
+        "EVENT" — событийные/календарные/маркерные токены (даты, вспышки, решения, пики)
+        "LEXEME" — обычные смысловые слова (по умолчанию)
+        "FA" — FractalAvatar/синтетические токены (служебные)
+    
+    Приоритет классификации:
+        1. FA — если is_fa == True
+        2. EVENT — если is_date_phrase == True
+        3. LEXEME — по умолчанию
+    """
+    if is_fa:
+        return "FA"
+    if is_date_phrase:
+        return "EVENT"
+    return "LEXEME"
+
+# =========================
 #  Метрики (с клиппингом)
 # =========================
 def calc_l1_from_string(s:str):
@@ -658,9 +689,14 @@ def parse_fii_category_str(cat: str) -> Tuple[str, str]:
 def analyze_word(raw_input: str) -> Dict[str, Any]:
     phrase, _ = parse_date_phrase(raw_input or "")
     src = phrase if phrase else raw_input
+    raw_norm = normalize(raw_input or "")
     norm, l1 = calc_l1_from_string(src)
     if not l1:
         return {}
+    # Определение TokenKind (метаполе, не влияет на расчёты)
+    is_date_phrase = (phrase is not None)
+    is_fa = False  # FA-mode только в analyze_from_fa
+    token_kind = detect_token_kind(raw_norm, is_date_phrase, is_fa)
     l2c, words, _, out_of_range = calc_l2c_from_l1(l1)
     if out_of_range or l2c is None:
         return {}
@@ -723,7 +759,8 @@ def analyze_word(raw_input: str) -> Dict[str, Any]:
         'R_e': R_e,
         'R_pi': R_pi,
         'R_rt2': R_rt2,
-        'resonator_max': (r_max_label, r_max_val)
+        'resonator_max': (r_max_label, r_max_val),
+        'token_kind': token_kind
     }
 
 # >>> PATCH: autopick L1/L2C for FA by W-neighborhood
@@ -848,7 +885,8 @@ def analyze_from_fa(raw_label: str,
         'R_rt2': R_rt2,
         'resonator_max': (r_max_label, r_max_val),
         'fa_mode': True,
-        'fa_autopick': fa_autopick
+        'fa_autopick': fa_autopick,
+        'token_kind': 'FA'
     }
 # <<< PATCH
 
@@ -880,6 +918,7 @@ def build_json_report(res: Dict[str, Any]) -> str:
         },
         'cluster': res['cluster_code'],
         'rt2_tag': res.get('rt2_tag', False),
+        'token_kind': res.get('token_kind', 'LEXEME'),
         'resonance_pair': {
             'code': res['res_pair_code'],
             'en': res['res_pair_en'],
@@ -944,6 +983,7 @@ def build_full_json_report(res: Dict[str, Any],
         },
         'cluster': res.get('cluster_code', ''),
         'rt2_tag': res.get('rt2_tag', False),
+        'token_kind': res.get('token_kind', 'LEXEME'),
         'resonance_pair': {
             'code': res.get('res_pair_code', ''),
             'en': res.get('res_pair_en', ''),
@@ -982,12 +1022,16 @@ def analyze_phrase(text: str):
             items.append({
                 "word": res['norm'],
                 "phrase_used": res['phrase_used'],
+                "raw_token": tok,
                 "L1": res['l1'],
                 "L2C": res['l2c'],
                 "W": round(res['w'], 3),
                 "C": round(res['C'], 3),
                 "Hm": round(res['Hm'], 3),
-                "Z": round(res['Z'], 3)
+                "Z": round(res['Z'], 3),
+                "token_kind": res.get("token_kind", "LEXEME"),
+                "cluster": res.get("cluster_code"),
+                "rt2_tag": res.get("rt2_tag", False)
             })
             valid_count += 1
     
@@ -2461,8 +2505,9 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                 items = []
                 for _, r in dff.iterrows():
                     try:
+                        norm_word = normalize(str(r.get("word", "")))
                         items.append({
-                            "word": str(r.get("word", "")).strip(),
+                            "word": norm_word,
                             "sphere": str(r.get("sphere", "")).strip(),
                             "tone": str(r.get("tone", "")).strip(),
                             "allowed": parse_bool(r.get("allowed", True)),
@@ -2474,7 +2519,8 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                             "w": float(r.get("w", 0.0)),
                             "C": float(r.get("C", 0.0)),
                             "Hm": float(r.get("Hm", 0.0)),
-                            "Z": float(r.get("Z", 0.0))
+                            "Z": float(r.get("Z", 0.0)),
+                            "token_kind": "LEXEME"
                         })
                     except Exception:
                         continue
@@ -2589,8 +2635,9 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                     items = []
                     try:
                         for _, r in df.iterrows():
+                            norm_word = normalize(str(r.get("word", "")))
                             items.append({
-                                "word": str(r.get("word", "")).upper(),
+                                "word": norm_word,
                                 "sphere": str(r.get("sphere", "прочее")),
                                 "tone": str(r.get("tone", "neutral")),
                                 "allowed": parse_bool(r.get("allowed", True)),
@@ -2603,6 +2650,7 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                                 "C": float(r.get("C", 0.0)) if not pd.isna(r.get("C")) else 0.0,
                                 "Hm": float(r.get("Hm", 0.0)) if not pd.isna(r.get("Hm")) else 0.0,
                                 "Z": float(r.get("Z", 0.0)) if not pd.isna(r.get("Z")) else 0.0,
+                                "token_kind": "LEXEME"
                             })
                     except Exception:
                         return "Ошибка преобразования данных.", None
@@ -2653,8 +2701,9 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                 items = []
                 try:
                     for _, r in df.iterrows():
+                        norm_word = normalize(str(r.get("word", "")))
                         items.append({
-                            "word": str(r.get("word", "")).upper(),
+                            "word": norm_word,
                             "sphere": str(r.get("sphere", "прочее")),
                             "tone": str(r.get("tone", "neutral")),
                             "allowed": parse_bool(r.get("allowed", True)),
@@ -2667,6 +2716,7 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                             "C": float(r.get("C", 0.0)) if not pd.isna(r.get("C")) else 0.0,
                             "Hm": float(r.get("Hm", 0.0)) if not pd.isna(r.get("Hm")) else 0.0,
                             "Z": float(r.get("Z", 0.0)) if not pd.isna(r.get("Z")) else 0.0,
+                            "token_kind": "LEXEME"
                         })
                 except Exception:
                     return "Ошибка преобразования данных.", None
