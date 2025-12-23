@@ -1697,15 +1697,16 @@ def fmt_near_far_words(res: Dict[str, Any], limit_near: int = 5, limit_contrast:
         w0, C0, Z0 = float(res['w']), float(res['C']), float(res['Z'])
         df['D'] = ((df['w'] - w0)**2 + (df['C'] - C0)**2 + (df['Z'] - Z0)**2).pow(0.5)
         
-        # Сортируем по расстоянию
-        df = df.sort_values('D')
+        # Сортируем по расстоянию и удаляем дубли по 'word' (сохраняем первое вхождение = ближайшее)
+        df = df.sort_values('D').drop_duplicates(subset=['word'], keep='first')
         
         # Near: D <= 0.30
         near_df = df[df['D'] <= 0.30].head(limit_near)
+        near_words = set(near_df['word'].tolist())
         near_list = [f"{w} ({d:.2f})" for w, d in zip(near_df['word'], near_df['D'])]
         
-        # Contrast: 0.20 < D <= 1.00
-        contrast_df = df[(df['D'] > 0.20) & (df['D'] <= 1.00)].head(limit_contrast)
+        # Contrast: 0.20 < D <= 1.00, исключаем слова из near
+        contrast_df = df[(df['D'] > 0.20) & (df['D'] <= 1.00) & (~df['word'].isin(near_words))].head(limit_contrast)
         contrast_list = [f"{w} ({d:.2f})" for w, d in zip(contrast_df['word'], contrast_df['D'])]
         
         return (' · '.join(near_list) if near_list else '—', ' · '.join(contrast_list) if contrast_list else '—')
@@ -1800,11 +1801,12 @@ def _collect_near_contrast(res: Dict[str, Any],
         w0, C0, Z0 = float(res['w']), float(res['C']), float(res['Z'])
         df['D'] = ((df['w'] - w0)**2 + (df['C'] - C0)**2 + (df['Z'] - Z0)**2).pow(0.5)
         
-        # Сортируем по расстоянию
-        df = df.sort_values('D')
+        # Сортируем по расстоянию и удаляем дубли по 'word' (сохраняем первое вхождение = ближайшее)
+        df = df.sort_values('D').drop_duplicates(subset=['word'], keep='first')
         
         # Near: D <= 0.30
         near_df = df[df['D'] <= 0.30].head(limit_near)
+        near_words = set(near_df['word'].tolist())
         near = [
             {
                 'word': w,
@@ -1818,8 +1820,8 @@ def _collect_near_contrast(res: Dict[str, Any],
             )
         ]
         
-        # Contrast: 0.20 < D <= 1.00
-        contrast_df = df[(df['D'] > 0.20) & (df['D'] <= 1.00)].head(limit_contrast)
+        # Contrast: 0.20 < D <= 1.00, исключаем слова из near
+        contrast_df = df[(df['D'] > 0.20) & (df['D'] <= 1.00) & (~df['word'].isin(near_words))].head(limit_contrast)
         contrast = [
             {
                 'word': w,
