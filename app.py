@@ -1002,7 +1002,7 @@ def already_in_personal(text,phrase)->bool:
 
 def add_to_personal():
     if not LAST_RESULT:
-        return "Сначала сделайте расчёт.", gr.update()
+        return "Сначала сделайте расчёт.", gr.update(value=compute_base_indicator())
     text=LAST_RESULT["input"]
     phrase=LAST_RESULT["phrase_used"]
     l1=LAST_RESULT["l1"]
@@ -1015,7 +1015,7 @@ def add_to_personal():
     if already_in_personal(text,phrase):
         with MUTEX:
             msg = commit_ops([PERSONAL_CSV, os.path.join(PERSONAL_DIR,".keep")], "Ensure personal in repo")
-        return f"Уже в персональной. {msg}", gr.update()
+        return f"Уже в персональной. {msg}", gr.update(value=compute_base_indicator())
     df = pd.read_csv(PERSONAL_CSV, encoding="utf-8")
     df.loc[len(df)] = [text, phrase, int(l1), int(l2c), float(f"{w:.6f}"),
                        float(f"{C:.6f}"), float(f"{Hm:.6f}"), float(f"{Z:.6f}"),
@@ -1023,7 +1023,7 @@ def add_to_personal():
     atomic_write_csv(df, PERSONAL_CSV)
     with MUTEX:
         msg = commit_ops([PERSONAL_CSV, os.path.join(PERSONAL_DIR,".keep")], "Update personal.csv")
-    return f"Добавлено: «{text}». {msg}", gr.update()
+    return f"Добавлено: «{text}». {msg}", gr.update(value=compute_base_indicator())
 
 def slugify(title:str)->str:
     m = {"А":"A","Б":"B","В":"V","Г":"G","Д":"D","Е":"E","Ё":"E","Ж":"Zh","З":"Z","И":"I","Й":"Y",
@@ -2120,6 +2120,11 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                 on_calc,
                 inputs=[inp1, mode, fa_W, fa_C, fa_Hm, fa_Z, fa_Phi],
                 outputs=[passport_md, visual_md, fractal_md, resonance_md, advice_md, dl_btn, dl_btn_full]
+            )
+            add_btn_an.click(
+                add_to_personal,
+                inputs=None,
+                outputs=[personal_status, base_indicator]
             )
         # ---- Фраза ----
         with gr.Tab("Фраза"):
