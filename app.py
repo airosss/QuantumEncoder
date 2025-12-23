@@ -1672,160 +1672,6 @@ def fmt_matches_personal_by_code(l1: int, l2c: int, current_word: str, limit: in
         return ' · '.join(lst) if lst else '—'
     return to_str(unique_l1), to_str(unique_l2c)
 
-# SELF-CHECK L2C BEGIN
-def _selfcheck_l2c(val: int, current_word: str = "", limit: int = 30) -> dict:
-    """
-    Диагностика совпадений по L2C: проверяет INDEX_L2C, LIB_DF и personal.csv.
-    Возвращает dict с результатами проверки каждого источника.
-    """
-    _ensure_lib_loaded()
-    current_upper = current_word.upper() if current_word else ""
-    report = {
-        'l2c_value': val,
-        'current_word': current_word,
-        'index': {'has_key': False, 'count': 0, 'examples': [], 'note': ''},
-        'lib_df': {'has_data': False, 'count': 0, 'examples': [], 'note': ''},
-        'personal': {'has_file': False, 'count': 0, 'examples': [], 'note': ''}
-    }
-    
-    # 1. Проверка INDEX_L2C
-    try:
-        if INDEX_READY:
-            if val in INDEX_L2C:
-                words_from_index = [w for w in INDEX_L2C[val] if w != current_upper]
-                report['index']['has_key'] = True
-                report['index']['count'] = len(words_from_index)
-                report['index']['examples'] = words_from_index[:limit]
-                if len(words_from_index) > 0:
-                    report['index']['note'] = f"Индекс видит {len(words_from_index)} слов"
-                else:
-                    report['index']['note'] = "Индекс есть, но совпадений нет (возможно, только текущее слово)"
-            else:
-                report['index']['note'] = "Ключ отсутствует в INDEX_L2C"
-        else:
-            report['index']['note'] = "INDEX_READY = False, индекс не построен"
-    except Exception as e:
-        report['index']['note'] = f"Ошибка проверки индекса: {type(e).__name__}"
-    
-    # 2. Проверка LIB_DF прямым фильтром
-    try:
-        if LIB_DF is None or LIB_DF.empty:
-            report['lib_df']['note'] = "LIB_DF пуст или не загружен"
-        else:
-            df = LIB_DF.copy()
-            df['l2c'] = pd.to_numeric(df['l2c'], errors='coerce')
-            df = df.dropna(subset=['l2c'])
-            df['word'] = df['word'].astype(str).str.upper()
-            matches_df = df[df['l2c'] == val]
-            if not matches_df.empty:
-                words_from_df = [w for w in matches_df['word'].tolist() if w != current_upper]
-                report['lib_df']['has_data'] = True
-                report['lib_df']['count'] = len(words_from_df)
-                report['lib_df']['examples'] = words_from_df[:limit]
-                if len(words_from_df) > 0:
-                    report['lib_df']['note'] = f"В LIB_DF найдено {len(words_from_df)} слов"
-                else:
-                    report['lib_df']['note'] = "В LIB_DF есть записи, но совпадений нет (возможно, только текущее слово)"
-            else:
-                report['lib_df']['note'] = "В LIB_DF нет записей с таким L2C"
-    except Exception as e:
-        report['lib_df']['note'] = f"Ошибка проверки LIB_DF: {type(e).__name__}"
-    
-    # 3. Проверка personal.csv
-    try:
-        if os.path.exists(PERSONAL_CSV):
-            report['personal']['has_file'] = True
-            words_from_personal = []
-            with open(PERSONAL_CSV, 'r', encoding='utf-8') as f:
-                rdr = csv.DictReader(f)
-                for r in rdr:
-                    word = str(r.get('text', '')).upper()
-                    if word == current_upper:
-                        continue
-                    try:
-                        if int(float(r.get('l2c', 0))) == val:
-                            words_from_personal.append(word)
-                    except Exception:
-                        continue
-            report['personal']['count'] = len(words_from_personal)
-            report['personal']['examples'] = words_from_personal[:limit]
-            if len(words_from_personal) > 0:
-                report['personal']['note'] = f"В personal.csv найдено {len(words_from_personal)} слов"
-            else:
-                report['personal']['note'] = "В personal.csv нет записей с таким L2C"
-        else:
-            report['personal']['note'] = "Файл personal.csv не существует"
-    except Exception as e:
-        report['personal']['note'] = f"Ошибка проверки personal.csv: {type(e).__name__}"
-    
-    return report
-
-def _fmt_selfcheck_report(rep: dict) -> str:
-    """
-    Форматирует отчёт диагностики L2C в markdown.
-    """
-    lines = []
-    lines.append("### 🧪 Self-check L2C")
-    lines.append(f"**Проверяемое значение:** L2C = {rep['l2c_value']}")
-    if rep['current_word']:
-        lines.append(f"**Текущее слово:** {rep['current_word']}")
-    lines.append("")
-    
-    # INDEX_L2C
-    lines.append("#### 📇 INDEX_L2C")
-    idx = rep['index']
-    lines.append(f"- **Ключ есть:** {'✅' if idx['has_key'] else '❌'}")
-    lines.append(f"- **Количество:** {idx['count']}")
-    if idx['examples']:
-        examples_str = ' · '.join(idx['examples'][:10])
-        if len(idx['examples']) > 10:
-            examples_str += f" ... (всего {len(idx['examples'])})"
-        lines.append(f"- **Примеры:** {examples_str}")
-    lines.append(f"- **Диагноз:** {idx['note']}")
-    lines.append("")
-    
-    # LIB_DF
-    lines.append("#### 📚 LIB_DF (прямой фильтр)")
-    lib = rep['lib_df']
-    lines.append(f"- **Данные найдены:** {'✅' if lib['has_data'] else '❌'}")
-    lines.append(f"- **Количество:** {lib['count']}")
-    if lib['examples']:
-        examples_str = ' · '.join(lib['examples'][:10])
-        if len(lib['examples']) > 10:
-            examples_str += f" ... (всего {len(lib['examples'])})"
-        lines.append(f"- **Примеры:** {examples_str}")
-    lines.append(f"- **Диагноз:** {lib['note']}")
-    lines.append("")
-    
-    # personal.csv
-    lines.append("#### 💾 personal.csv")
-    pers = rep['personal']
-    lines.append(f"- **Файл существует:** {'✅' if pers['has_file'] else '❌'}")
-    lines.append(f"- **Количество:** {pers['count']}")
-    if pers['examples']:
-        examples_str = ' · '.join(pers['examples'][:10])
-        if len(pers['examples']) > 10:
-            examples_str += f" ... (всего {len(pers['examples'])})"
-        lines.append(f"- **Примеры:** {examples_str}")
-    lines.append(f"- **Диагноз:** {pers['note']}")
-    lines.append("")
-    
-    # Итоговый диагноз
-    lines.append("#### 💡 Итоговый диагноз")
-    if idx['has_key'] and idx['count'] > 0:
-        lines.append("✅ **Индекс работает корректно** — совпадения есть в INDEX_L2C")
-    elif lib['has_data'] and lib['count'] > 0:
-        lines.append("⚠️ **Индекс не видит, но в LIB_DF есть** — возможно, нужно перестроить индекс (rebuild_indexes)")
-    elif pers['count'] > 0:
-        lines.append("ℹ️ **Совпадения только в personal.csv** — это нормально, если слова добавлены вручную")
-    elif not lib['has_data'] and not idx['has_key']:
-        lines.append("❌ **Реально нет совпадений** — в библиотеке нет слов с таким L2C")
-    else:
-        lines.append("❓ **Неопределённое состояние** — проверьте логи выше")
-    
-    return "\n".join(lines)
-# SELF-CHECK L2C END
-
 def fmt_near_far_words(res: Dict[str, Any], limit_near: int = 5, limit_contrast: int = 5) -> Tuple[str, str]:
     if LIB_DF is None or LIB_DF.empty:
         return '—', '—'
@@ -2068,10 +1914,6 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
             add_btn_an  = gr.Button("➕ Добавить в персональную библиотеку")
             personal_status = gr.Markdown()
             base_indicator = gr.Markdown()
-            # SELF-CHECK L2C BEGIN
-            btn_selfcheck = gr.Button("🧪 Self-check L2C (debug)", variant="secondary")
-            selfcheck_md = gr.Markdown()
-            # SELF-CHECK L2C END
 
             # функция расчёта одного слова / FA
             def on_calc(w1, mode_val, W_in, C_in, Hm_in, Z_in, Phi_in):
@@ -2285,22 +2127,6 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                 inputs=None,
                 outputs=[personal_status, base_indicator]
             )
-            # SELF-CHECK L2C BEGIN
-            def on_selfcheck():
-                if not LAST_RESULT:
-                    return "Сначала сделайте расчёт слова."
-                l2c_val = LAST_RESULT.get('l2c')
-                current_word = LAST_RESULT.get('input', '')
-                if l2c_val is None:
-                    return "Ошибка: L2C не найден в результатах расчёта."
-                try:
-                    l2c_int = int(l2c_val)
-                    report = _selfcheck_l2c(l2c_int, current_word, limit=30)
-                    return _fmt_selfcheck_report(report)
-                except Exception as e:
-                    return f"Ошибка self-check: {type(e).__name__}: {e}"
-            btn_selfcheck.click(on_selfcheck, inputs=None, outputs=[selfcheck_md])
-            # SELF-CHECK L2C END
         # ---- Фраза ----
         with gr.Tab("Фраза"):
             gr.Markdown("### Фразовый анализатор (визуал)\nВставь фразу (50–120 слов) **или** список слов столбиком. Даты `ДД.ММ.ГГГГ` распознаются.")
