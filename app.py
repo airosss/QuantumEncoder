@@ -386,16 +386,72 @@ def classify_initial(v: Optional[int]) -> Tuple[Optional[str], Optional[str], Op
 # =========================
 #  Дополнительные расчёты для расширенного анализа
 # =========================
+def cluster_from_w(w: float, cfg: dict) -> dict:
+    """
+    Определяет кластер и rt2_tag на основе W и конфигурации.
+    Возвращает {"cluster": "inversion|phi|e|e-pi|pi", "rt2_tag": bool}
+    """
+    if w is None or (isinstance(w, float) and (w != w or w == float('inf') or w == float('-inf'))):
+        return {"cluster": None, "rt2_tag": False}
+    
+    try:
+        w_val = float(w)
+    except (ValueError, TypeError):
+        return {"cluster": None, "rt2_tag": False}
+    
+    bounds = cfg.get("cluster_bounds", {})
+    
+    # inversion: w < 1.0
+    if w_val < 1.0:
+        cluster = "inversion"
+    else:
+        # Определяем кластер по границам из config
+        cluster = None
+        phi_bounds = bounds.get("phi", [1.00, 1.60])
+        e_bounds = bounds.get("e", [1.60, 2.70])
+        e_pi_bounds = bounds.get("e-pi", [2.70, 3.20])
+        pi_bounds = bounds.get("pi", [3.20, 99.00])
+        
+        if phi_bounds[0] <= w_val < phi_bounds[1]:
+            cluster = "phi"
+        elif e_bounds[0] <= w_val < e_bounds[1]:
+            cluster = "e"
+        elif e_pi_bounds[0] <= w_val < e_pi_bounds[1]:
+            cluster = "e-pi"
+        elif pi_bounds[0] <= w_val < pi_bounds[1]:
+            cluster = "pi"
+        else:
+            # Fallback если не попал ни в один диапазон
+            cluster = "pi"
+    
+    # rt2_tag - overlay флаг
+    rt2_bounds = bounds.get("rt2", [1.214, 1.614])
+    rt2_tag = rt2_bounds[0] <= w_val <= rt2_bounds[1]
+    
+    return {"cluster": cluster, "rt2_tag": rt2_tag}
+
 def cluster_by_w(w: float) -> Tuple[str, str]:
-    if 1.0 <= w < 1.6:
-        return "phi", "φ-ядро"
-    if 1.6 <= w < 2.7:
-        return "e", "e"
-    if 2.7 <= w < 3.2:
-        return "e-pi", "e–π"
-    return "pi", "π"
+    """
+    Устаревшая функция для обратной совместимости.
+    Использует cluster_from_w и APP_CFG.
+    """
+    result = cluster_from_w(w, APP_CFG)
+    cluster = result.get("cluster")
+    
+    # Маппинг кластеров на русские названия
+    cluster_ru_map = {
+        "inversion": "инверсия",
+        "phi": "φ-ядро",
+        "e": "e",
+        "e-pi": "e–π",
+        "pi": "π"
+    }
+    
+    cluster_ru = cluster_ru_map.get(cluster, "неопределён")
+    return cluster or "phi", cluster_ru
 
 CLUSTER_ADVICES = {
+    "inversion": ("инверсия", "Инверсия поля. Совет: проверить корректность расчёта."),
     "phi": ("φ-ядро", "Гармония и стабильность. Совет: добавить e-слово (движение)."),
     "e":   ("e", "Рост и импульс. Совет: добавить φ-слово (покой)."),
     "e-pi":("e–π", "Прорыв, интенсивность. Совет: внести равновесие φ или √2."),
@@ -611,8 +667,11 @@ def analyze_word(raw_input: str) -> Dict[str, Any]:
     w, C, Hm, Z = metrics(l1, l2c)
     q_total = (Z + C + Hm) / 3.0
     fii = 10 * (0.4 * Z + 0.3 * q_total + 0.2 * C + 0.1 * Hm - 0.5)
-    cluster_code, cluster_ru = cluster_by_w(w)
-    cluster_name, advice = CLUSTER_ADVICES[cluster_code]
+    cluster_result = cluster_from_w(w, APP_CFG)
+    cluster_code = cluster_result.get("cluster", "phi")
+    rt2_tag = cluster_result.get("rt2_tag", False)
+    cluster_name, advice = CLUSTER_ADVICES.get(cluster_code, ("неопределён", ""))
+    cluster_ru = cluster_name
     th = float(APP_CFG.get("resonator_threshold", 0.75))
     pair_code, pair_en, pair_ru, r_pair = resonance_pair(w, threshold=th)
     pattern, inh, exh, r_coef, r_interp = fractal_unfold(l1)
@@ -644,6 +703,7 @@ def analyze_word(raw_input: str) -> Dict[str, Any]:
         'cluster_ru': cluster_ru,
         'cluster_name': cluster_name,
         'cluster_advice': advice,
+        'rt2_tag': rt2_tag,
         'res_pair_code': pair_code,
         'res_pair_en': pair_en,
         'res_pair_ru': pair_ru,
@@ -714,8 +774,11 @@ def analyze_from_fa(raw_label: str,
     Строит полный результат отчёта из интегрального FractalAvatar-профиля:
     W, C, Hm, Z, Φ (без пересчёта через L1/L2C). L1/L2C синтезируем только как служебные.
     """
-    cluster_code, cluster_ru = cluster_by_w(W_in)
-    cluster_name, advice = CLUSTER_ADVICES[cluster_code]
+    cluster_result = cluster_from_w(W_in, APP_CFG)
+    cluster_code = cluster_result.get("cluster", "phi")
+    rt2_tag = cluster_result.get("rt2_tag", False)
+    cluster_name, advice = CLUSTER_ADVICES.get(cluster_code, ("неопределён", ""))
+    cluster_ru = cluster_name
 
     # служебные L1/L2C → сначала пробуем автоподбор по окрестности W
     l1_pick, l2c_pick, eps_used, hits = _autopick_l1_l2c_for_fa(float(W_in))
@@ -763,6 +826,7 @@ def analyze_from_fa(raw_label: str,
         'cluster_ru': cluster_ru,
         'cluster_name': cluster_name,
         'cluster_advice': advice,
+        'rt2_tag': rt2_tag,
         'res_pair_code': pair_code,
         'res_pair_en': pair_en,
         'res_pair_ru': pair_ru,
@@ -815,6 +879,7 @@ def build_json_report(res: Dict[str, Any]) -> str:
             'FII': round(res['fii'], 3)
         },
         'cluster': res['cluster_code'],
+        'rt2_tag': res.get('rt2_tag', False),
         'resonance_pair': {
             'code': res['res_pair_code'],
             'en': res['res_pair_en'],
@@ -878,6 +943,7 @@ def build_full_json_report(res: Dict[str, Any],
             'FII': round(res['fii'], 3)
         },
         'cluster': res.get('cluster_code', ''),
+        'rt2_tag': res.get('rt2_tag', False),
         'resonance_pair': {
             'code': res.get('res_pair_code', ''),
             'en': res.get('res_pair_en', ''),
@@ -1347,23 +1413,23 @@ def add_words_to_library(raw_text: str, sphere_choice: str, create_new: bool, ne
     return base_msg, df_new, quality_summary(LIB_DF)
 
 def clusters_from_w(w: float) -> str:
-    if 1.214 <= w <= 1.614:
-        return "rt2"
-    if 1.0   <= w < 1.6:
-        return "phi"
-    if 1.6   <= w < 2.7:
-        return "e"
-    if 2.7   <= w < 3.2:
-        return "e-pi"
-    if w >= 3.2:
-        return "pi"
-    return "phi"
+    """
+    Устаревшая функция для обратной совместимости.
+    Использует cluster_from_w и APP_CFG.
+    Возвращает только основной кластер (без rt2_tag).
+    """
+    result = cluster_from_w(w, APP_CFG)
+    cluster = result.get("cluster")
+    return cluster or "phi"
 
 def quality_summary(df: pd.DataFrame):
     if df is None or df.empty:
         return gr.Dataframe()
     d = df.copy()
-    d["cluster"] = d["w"].apply(clusters_from_w)
+    # Используем cluster_from_w для определения кластера и rt2_tag
+    cluster_results = d["w"].apply(lambda w: cluster_from_w(w, APP_CFG))
+    d["cluster"] = cluster_results.apply(lambda r: r.get("cluster", "phi"))
+    d["rt2_tag"] = cluster_results.apply(lambda r: r.get("rt2_tag", False))
     total = len(d)
     zone = d[(d["w"]>=1.6) & (d["w"]<=2.4)]
     edge = d[(d["w"]>4.0) | (d["w"]<0.7)]
@@ -1374,11 +1440,12 @@ def quality_summary(df: pd.DataFrame):
               .query("cnt >= 30")
               .sort_values(["Z_mean","cnt"], ascending=[False,False])
               .head(10))
-    clusters = d["cluster"].value_counts().reindex(["phi","e","e-pi","pi","rt2"], fill_value=0)
+    clusters = d["cluster"].value_counts().reindex(["inversion","phi","e","e-pi","pi"], fill_value=0)
+    rt2_count = d["rt2_tag"].sum()
     summary_tbl = pd.DataFrame({
-        "metric": ["Всего","Зона 2±0.4 (%)","Edge (W<0.7 или >4.0)","phi","e","e–pi","pi","√2"],
+        "metric": ["Всего","Зона 2±0.4 (%)","Edge (W<0.7 или >4.0)","inversion","phi","e","e–pi","pi","√2"],
         "value":  [total, round(len(zone)/total*100,1) if total else 0, len(edge),
-                   clusters.get("phi",0), clusters.get("e",0), clusters.get("e-pi",0), clusters.get("pi",0), clusters.get("rt2",0)]
+                   clusters.get("inversion",0), clusters.get("phi",0), clusters.get("e",0), clusters.get("e-pi",0), clusters.get("pi",0), rt2_count]
     })
     return summary_tbl
 
@@ -1386,11 +1453,12 @@ def filter_library_view(sphere_query:str, cluster_query:str, search:str):
     if LIB_DF is None or LIB_DF.empty:
         return gr.Dataframe()
     d = LIB_DF.copy()
-    d["cluster"] = d["w"].apply(clusters_from_w)
+    # Используем cluster_from_w для определения кластера
+    d["cluster"] = d["w"].apply(lambda w: cluster_from_w(w, APP_CFG).get("cluster", "phi"))
     if sphere_query and sphere_query.strip():
         sq = sphere_query.strip().lower()
         d = d[d["sphere"].str.lower().str.contains(sq)]
-    if cluster_query in {"phi","e","e-pi","pi","rt2"}:
+    if cluster_query in {"inversion","phi","e","e-pi","pi"}:
         d = d[d["cluster"]==cluster_query]
     if search and search.strip():
         q = normalize(search)
@@ -1957,6 +2025,7 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
 
                 # основные показатели
                 cluster_label = {
+                    'inversion': 'инверсия',
                     'phi': 'φ-ядро',
                     'e': 'e',
                     'e-pi': 'e–π',
@@ -2076,6 +2145,7 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                 advice_lines = []
                 advice_lines.append('<div class="section-heading">&gt; Психогеометрический совет</div>')
                 advice_map2 = {
+                    'inversion': "Проверь корректность расчёта. Инверсия поля может указывать на ошибку.",
                     'phi': "Добавь e-слова (ПУТЬ, ДВИЖЕНИЕ, ПРОЦЕСС). Для углубления — √2-слова (ЗЕРКАЛО, ОТРАЖЕНИЕ).",
                     'e':   "Дополни φ-словами (СПОКОЙ, РАВНОВЕСИЕ)…",
                     'e-pi':"Сильный всплеск. Соедини с φ/√2, чтобы не увести в турбулентность…",
@@ -2177,7 +2247,7 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
             gr.Markdown("### Быстрые фильтры / Поиск")
             with gr.Row():
                 q_sphere = gr.Textbox(label="Фильтр по сфере (подстрока)", placeholder="например: эзотерика", scale=2)
-                q_cluster = gr.Dropdown(choices=["","phi","e","e-pi","pi","rt2"], label="Кластер W", value="", scale=1)
+                q_cluster = gr.Dropdown(choices=["","inversion","phi","e","e-pi","pi"], label="Кластер W", value="", scale=1)
                 q_search = gr.Textbox(label="Поиск по слову", placeholder="введи слово или его часть", scale=2)
                 refresh_view = gr.Button("Показать", variant="secondary", scale=1)
             lib_view = gr.Dataframe(interactive=False)
