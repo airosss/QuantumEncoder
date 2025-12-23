@@ -165,6 +165,7 @@ KRYON_MAP = {
 HUNDS = ["","СТО","ДВЕСТИ","ТРИСТА","ЧЕТЫРЕСТА","ПЯТЬСОТ","ШЕСТЬСОТ","СЕМЬСОТ","ВОСЕМЬСОТ","ДЕВЯТЬСОТ"]
 TENS  = ["","ДЕСЯТЬ","ДВАДЦАТЬ","ТРИДЦАТЬ","СОРОК","ПЯТЬДЕСЯТ","ШЕСТЬДЕСЯТ","СЕМЬДЕСЯТ","ВОСЕМЬДЕСЯТ","ДЕВЯНОСТО"]
 UNITS = ["","ОДИН","ДВА","ТРИ","ЧЕТЫРЕ","ПЯТЬ","ШЕСТЬ","СЕМЬ","ВОСЕМЬ","ДЕВЯТЬ"]
+UNITS_FEM = ["","ОДНА","ДВЕ","ТРИ","ЧЕТЫРЕ","ПЯТЬ","ШЕСТЬ","СЕМЬ","ВОСЕМЬ","ДЕВЯТЬ"]
 TEENS = ["ДЕСЯТЬ","ОДИННАДЦАТЬ","ДВЕНАДЦАТЬ","ТРИНАДЦАТЬ","ЧЕТЫРНАДЦАТЬ",
          "ПЯТНАДЦАТЬ","ШЕСТНАДЦАТЬ","СЕМНАДЦАТЬ","ВОСЕМНАДЦАТЬ","ДЕВЯТНАДЦАТЬ"]
 
@@ -172,68 +173,98 @@ def normalize(t: str) -> str:
     """Удаляет все символы, кроме кириллических букв, и приводит к верхнему регистру."""
     return re.sub(r"[^А-ЯЁ]", "", (t or "").upper())
 
-def number_to_words_ru_0_999(n: int) -> str:
+def _number_to_words_0_999(n: int, feminine: bool = False) -> str:
     """
-    Преобразует число в русские слова (верхний регистр).
-    Поддерживает:
-      – 0 → "НОЛЬ"
-      – 1–999 — как раньше
-      – 1000+ — через блок тысяч + остаток (<1000)
+    Преобразует число 0-999 в русские слова (верхний регистр).
+    feminine: True для женского рода (ОДНА, ДВЕ), False для мужского (ОДИН, ДВА).
     """
     n = int(n)
     if n == 0:
         return "НОЛЬ"
-
-    parts: List[str] = []
-
-    # Блок тысяч
-    if n > 999:
-        thousands = n // 1000      # 1, 2, 3, ...
-        rest = n % 1000
-
-        if thousands == 1:
-            parts.append("ОДНА ТЫСЯЧА")
-        elif thousands == 2:
-            parts.append("ДВЕ ТЫСЯЧИ")
-        elif thousands in (3, 4):
-            parts.append(UNITS[thousands] + " ТЫСЯЧИ")
-        elif 5 <= thousands <= 9:
-            parts.append(UNITS[thousands] + " ТЫСЯЧ")
-        else:
-            # если вдруг L1 очень большой — раскладываем thousands как отдельное число
-            parts.append(number_to_words_ru_0_999(thousands))
-            parts.append("ТЫСЯЧ")
-
-        n = rest
-        if n == 0:
-            return " ".join(parts)
-
-    # Дальше — логика для 1–999
+    
+    units_arr = UNITS_FEM if feminine else UNITS
+    
     h = n // 100
     t = (n % 100) // 10
     u = n % 10
-
+    
     out: List[str] = []
-
+    
     if h:
         out.append(HUNDS[h])
-
+    
     if t == 1:
         out.append(TEENS[u])
     else:
         if t:
             out.append(TENS[t])
         if u:
-            out.append(UNITS[u])
+            out.append(units_arr[u])
+    
+    return " ".join(out)
 
-    return " ".join(parts + out)
+def number_to_words_ru_0_999999(n: int) -> str:
+    """
+    Каноническое преобразование числа в русские слова (верхний регистр).
+    Поддерживает диапазон: 0...999999 (включая тысячи).
+    Падеж: именительный, верхний регистр.
+    Возвращает строку с пробелами между словами.
+    """
+    n = int(n)
+    if n == 0:
+        return "НОЛЬ"
+    
+    if n < 1000:
+        return _number_to_words_0_999(n, feminine=False)
+    
+    # Обработка тысяч
+    T = n // 1000  # количество тысяч (1..999)
+    R = n % 1000   # остаток
+    
+    # Определение формы слова "ТЫСЯЧА"
+    T_mod_100 = T % 100
+    T_mod_10 = T % 10
+    
+    if T_mod_100 in (11, 12, 13, 14):
+        thousand_word = "ТЫСЯЧ"
+    elif T_mod_10 == 1:
+        thousand_word = "ТЫСЯЧА"
+    elif T_mod_10 in (2, 3, 4):
+        thousand_word = "ТЫСЯЧИ"
+    else:
+        thousand_word = "ТЫСЯЧ"
+    
+    # Преобразование количества тысяч (женский род для тысяч)
+    thousands_str = _number_to_words_0_999(T, feminine=True)
+    
+    parts = [thousands_str, thousand_word]
+    
+    # Добавляем остаток, если есть
+    if R > 0:
+        rest_str = _number_to_words_0_999(R, feminine=False)
+        parts.append(rest_str)
+    
+    return " ".join(parts)
 
 def calc_l2c_from_l1(l1: int):
-    """Вычисляет L2C, текстовое представление L1 и склеенную строку."""
-    words = number_to_words_ru_0_999(l1)
-    glued = re.sub(r"\s+","", words)
+    """
+    Вычисляет L2C, текстовое представление L1 и склеенную строку.
+    Возвращает: (l2c, words, glued, out_of_range)
+    Если l1 < 0 или l1 > 999999, возвращает (None, None, None, True).
+    """
+    l1 = int(l1)
+    
+    # Проверка диапазона
+    if l1 < 0 or l1 > 999999:
+        return (None, None, None, True)
+    
+    words = number_to_words_ru_0_999999(l1)
+    # Удаляем все пробелы, табы, переносы строк и дефисы
+    glued = re.sub(r"[\s\t\n\r\-]+", "", words)
+    # Нормализуем: только кириллические буквы
+    glued = normalize(glued)
     l2c = sum(KRYON_MAP.get(ch, 0) for ch in glued)
-    return l2c, words, glued
+    return (l2c, words, glued, False)
 
 # =========================
 #  Даты → «официальные» формы
@@ -400,10 +431,18 @@ def fractal_unfold(l1: int) -> Tuple[str, int, int, float, str]:
     w_values = []
     curr_l1 = l1
     for _ in range(12):
-        l2c, _, _ = calc_l2c_from_l1(curr_l1)
+        l2c, _, _, out_of_range = calc_l2c_from_l1(curr_l1)
+        if out_of_range or l2c is None:
+            # Остановка при выходе за диапазон
+            break
         w, _, _, _ = metrics(curr_l1, l2c)
         w_values.append(w)
         curr_l1 = l2c
+    
+    # Обработка случая out_of_range
+    if not w_values:
+        return "—", 0, 0, 0.0, "out_of_range"
+    
     pattern_chars = []
     inhale = 0
     exhale = 0
@@ -415,16 +454,19 @@ def fractal_unfold(l1: int) -> Tuple[str, int, int, float, str]:
             pattern_chars.append('○')
             exhale += 1
     pattern_chars.append('→')
+    
     if exhale == 0:
         R = float('inf') if inhale > 0 else 1.0
     else:
         R = inhale / exhale
+    
     if R > 1.05:
         interp = "слово раскрывается"
     elif R < 0.95:
         interp = "слово стабилизирует поле"
     else:
         interp = "слово в равновесии"
+    
     return ''.join(pattern_chars), inhale, exhale, R, interp
 
 def fii_bar(fii: float) -> Tuple[str, str]:
@@ -574,7 +616,9 @@ def analyze_word(raw_input: str) -> Dict[str, Any]:
     norm, l1 = calc_l1_from_string(src)
     if not l1:
         return {}
-    l2c, words, _ = calc_l2c_from_l1(l1)
+    l2c, words, _, out_of_range = calc_l2c_from_l1(l1)
+    if out_of_range or l2c is None:
+        return {}
     w, C, Hm, Z = metrics(l1, l2c)
     q_total = (Z + C + Hm) / 3.0
     fii = 10 * (0.4 * Z + 0.3 * q_total + 0.2 * C + 0.1 * Hm - 0.5)
@@ -1011,6 +1055,26 @@ def slugify(title:str)->str:
     t=re.sub(r"[^A-Za-z0-9]+","-",t).strip("-").lower()
     return t or "sphere"
 
+def parse_bool(x) -> bool:
+    """
+    Парсит значение в булево по канону:
+    - если x bool -> вернуть x
+    - если x int/float -> вернуть bool(x)
+    - если x None -> False
+    - если x str -> strip/lower и True только для: ("true","1","yes","y","да")
+    - для всего остального -> False
+    """
+    if isinstance(x, bool):
+        return x
+    if isinstance(x, (int, float)):
+        return bool(x)
+    if x is None:
+        return False
+    if isinstance(x, str):
+        s = x.strip().lower()
+        return s in ("true", "1", "yes", "y", "да")
+    return False
+
 def force_recalc_row(
     word: str,
     sphere: str,
@@ -1025,7 +1089,24 @@ def force_recalc_row(
     if l1 is None:
         _, l1 = calc_l1_from_string(word)
     if l2c is None:
-        l2c, _, _ = calc_l2c_from_l1(int(l1))
+        l2c, _, _, out_of_range = calc_l2c_from_l1(int(l1))
+        if out_of_range or l2c is None:
+            # Возвращаем минимальный результат при out_of_range
+            return {
+                'word': word,
+                'sphere': sphere,
+                'tone': tone,
+                'allowed': allowed,
+                'notes': notes or "",
+                'l1': None,
+                'l2c': None,
+                'w': None,
+                'C': None,
+                'Hm': None,
+                'Z': None,
+                'field': field or "",
+                'role': role or ""
+            }
 
     w, C, Hm, Z = metrics(int(l1), int(l2c))
 
@@ -1037,7 +1118,7 @@ def force_recalc_row(
         "word": word,
         "sphere": sphere,
         "tone": tone,
-        "allowed": bool(allowed),
+        "allowed": parse_bool(allowed),
         "field": (field or "").strip(),
         "role": (role or "").strip(),
         "notes": notes_str,
@@ -1059,7 +1140,8 @@ def soft_dedup(df: pd.DataFrame) -> pd.DataFrame:
         if c not in df.columns:
             df[c] = ""
 
-    def uniq(series, sep=";"):
+    def uniq_notes(series, sep=" | "):
+        """Собирает уникальные непустые значения и склеивает через sep."""
         out = []
         for x in series:
             s = "" if pd.isna(x) else str(x).strip()
@@ -1067,40 +1149,51 @@ def soft_dedup(df: pd.DataFrame) -> pd.DataFrame:
                 out.append(s)
         return sep.join(out)
 
-    def pick_or_join(series):
-        vals = []
+    def pick_first_nonempty(series):
+        """Берёт первое непустое значение из серии."""
         for x in series:
             s = "" if pd.isna(x) else str(x).strip()
-            if s and s not in vals:
-                vals.append(s)
-        if not vals:
-            return ""
-        return vals[0] if len(vals) == 1 else ";".join(vals)
+            if s:
+                return s
+        return ""
 
-    agg = df.groupby(["word","sphere","tone"], as_index=False).agg({
-        "allowed": lambda s: any(bool(x) for x in s),
-        "field":   lambda s: pick_or_join(s),
-        "role":    lambda s: pick_or_join(s),
-        "notes":   lambda s: uniq([x for x in s if str(x).strip()], " | "),
-        "l1": "mean",
-        "l2c": "mean",
-        "w": "mean",
-        "C": "mean",
-        "Hm": "mean",
-        "Z": "mean",
-    })
-
-    agg["l1"] = agg["l1"].round().astype(int)
-    agg["l2c"] = agg["l2c"].round().astype(int)
-
-    for col in ["w", "C", "Hm", "Z"]:
-        agg[col] = pd.to_numeric(agg[col], errors="coerce").fillna(0.0)
-
-    agg["C"]  = agg["C"].clip(0, 1)
-    agg["Hm"] = agg["Hm"].clip(0, 1)
-    agg["Z"]  = agg["Z"].clip(0, 1)
-
-    return agg[LIB_COLS]
+    # Группируем по ключу дедупликации
+    grouped = df.groupby(["word", "sphere", "tone"], as_index=False)
+    
+    deduped_rows = []
+    
+    for (word, sphere, tone), group in grouped:
+        # Нормализуем word и пропускаем пустые
+        word_norm = normalize(str(word).strip().upper()) if word else ""
+        if not word_norm:
+            continue
+        
+        # Собираем метаданные из группы
+        allowed_vals = [parse_bool(x) for x in group["allowed"]]
+        allowed = any(allowed_vals)  # True если хотя бы один True
+        
+        field = pick_first_nonempty(group["field"])
+        role = pick_first_nonempty(group["role"])
+        notes = uniq_notes(group["notes"], sep=" | ")
+        
+        # Пересчитываем метрики детерминированно из word
+        row = force_recalc_row(
+            word=word_norm,
+            sphere=str(sphere).strip() if sphere else "прочее",
+            tone=str(tone).strip() if tone else "neutral",
+            allowed=allowed,
+            notes=notes,
+            field=field if field else None,
+            role=role if role else None
+        )
+        
+        deduped_rows.append(row)
+    
+    if not deduped_rows:
+        return pd.DataFrame(columns=LIB_COLS)
+    
+    result_df = pd.DataFrame(deduped_rows)
+    return result_df[LIB_COLS]
 
 
 def import_json_library(file_obj):
@@ -1118,9 +1211,7 @@ def import_json_library(file_obj):
                 continue
             sphere = (it.get("sphere") or "прочее").strip()
             tone   = (it.get("tone") or "neutral").strip()
-            allowed= it.get("allowed", True)
-            if isinstance(allowed, str):
-                allowed = allowed.lower() in ("true","1","yes","y","да")
+            allowed = parse_bool(it.get("allowed", True))
             notes  = it.get("notes", "")
             field  = (it.get("field") or "").strip()
             role   = (it.get("role") or "").strip()
@@ -1171,7 +1262,7 @@ def load_spheres_into_memory():
                     word=str(r.get("word", "")).upper(),
                     sphere=str(r.get("sphere", "прочее")),
                     tone=str(r.get("tone", "neutral")),
-                    allowed=bool(r.get("allowed", True)),
+                    allowed=parse_bool(r.get("allowed", True)),
                     notes=r.get("notes", ""),
                     l1=int(r.get("l1", 0)) if not pd.isna(r.get("l1", 0)) else None,
                     l2c=int(r.get("l2c", 0)) if not pd.isna(r.get("l2c", 0)) else None,
@@ -1359,7 +1450,7 @@ def save_as_sphere_csvs():
                     "word":   str(r.get("word", "")).upper(),
                     "sphere": sph,
                     "tone":   str(r.get("tone", "neutral")),
-                    "allowed": bool(r.get("allowed", True)),
+                    "allowed": parse_bool(r.get("allowed", True)),
                     "field":  str(r.get("field", "")).strip(),
                     "role":   str(r.get("role", "")).strip(),
                     "notes":  ("" if pd.isna(r.get("notes", "")) else str(r.get("notes", ""))),
@@ -2235,7 +2326,7 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                             "word": str(r.get("word", "")).strip(),
                             "sphere": str(r.get("sphere", "")).strip(),
                             "tone": str(r.get("tone", "")).strip(),
-                            "allowed": bool(r.get("allowed", True)),
+                            "allowed": parse_bool(r.get("allowed", True)),
                             "field": str(r.get("field", "")).strip(),
                             "role":  str(r.get("role", "")).strip(),
                             "notes": str(r.get("notes", "")).strip(),
@@ -2363,7 +2454,7 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                                 "word": str(r.get("word", "")).upper(),
                                 "sphere": str(r.get("sphere", "прочее")),
                                 "tone": str(r.get("tone", "neutral")),
-                                "allowed": bool(r.get("allowed", True)),
+                                "allowed": parse_bool(r.get("allowed", True)),
                                 "field": str(r.get("field", "")).strip(),
                                 "role":  str(r.get("role", "")).strip(),
                                 "notes": "" if pd.isna(r.get("notes")) else str(r.get("notes")).strip(),
@@ -2427,7 +2518,7 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                             "word": str(r.get("word", "")).upper(),
                             "sphere": str(r.get("sphere", "прочее")),
                             "tone": str(r.get("tone", "neutral")),
-                            "allowed": bool(r.get("allowed", True)),
+                            "allowed": parse_bool(r.get("allowed", True)),
                             "field": str(r.get("field", "")).strip(),
                             "role":  str(r.get("role", "")).strip(),
                             "notes": "" if pd.isna(r.get("notes")) else str(r.get("notes")).strip(),
