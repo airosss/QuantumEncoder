@@ -2615,6 +2615,8 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
     # --- Инициализация при запуске ---
     def _init_controls():
         _ensure_lib_loaded()
+        if LIB_DF is not None and not LIB_DF.empty:
+            rebuild_indexes(LIB_DF)
         stats_str = compute_base_indicator()
         spheres_update = gr.update(choices=get_all_spheres(), value=None)
         return (
