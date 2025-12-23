@@ -56,6 +56,11 @@ CALC_VERSION    = "calc@2025-11-05"
 
 MUTEX = threading.Lock()
 LIB_DF: Optional[pd.DataFrame] = None
+
+# Индексы для быстрого поиска по L1/L2C
+INDEX_L1: Dict[int, List[str]] = {}
+INDEX_L2C: Dict[int, List[str]] = {}
+INDEX_READY: bool = False
 LAST_RESULT: Dict[str, Any] = {}
 
 # =========================
@@ -1216,6 +1221,7 @@ def import_json_library(file_obj):
             merged = soft_dedup(merged)
 
         LIB_DF = merged.copy()
+        rebuild_indexes(LIB_DF)
 
         if LIB_DF.empty:
             return "Файл прочитан, но записей не найдено.", gr.Dataframe(), ""
@@ -1250,6 +1256,7 @@ def load_spheres_into_memory():
     df = pd.DataFrame(rows)
     df = soft_dedup(df)
     LIB_DF = df.copy()
+    rebuild_indexes(LIB_DF)
     if LIB_DF.empty:
         return "В папке /spheres/ данных не найдено.", gr.Dataframe()
     s = quality_summary(LIB_DF)
@@ -1334,6 +1341,7 @@ def add_words_to_library(raw_text: str, sphere_choice: str, create_new: bool, ne
         merged = pd.concat([LIB_DF, df_new], ignore_index=True)
     merged = soft_dedup(merged)
     LIB_DF = merged.copy()
+    rebuild_indexes(LIB_DF)
     base_msg = f"Добавлено слов: {len(rows)} (после dedup: {len(LIB_DF)})"
     if was_loaded:
         base_msg = f"{base_msg}\n{auto_msg}"
@@ -1520,28 +1528,80 @@ def axis_line_for_w(w: float) -> str:
 def fmt_fractal_series(pattern: str) -> str:
     return pattern
 
+def rebuild_indexes(df: pd.DataFrame):
+    """
+    Перестраивает индексы INDEX_L1 и INDEX_L2C из DataFrame.
+    Вызывается после любых изменений LIB_DF.
+    """
+    global INDEX_L1, INDEX_L2C, INDEX_READY
+    
+    INDEX_L1.clear()
+    INDEX_L2C.clear()
+    
+    if df is None or df.empty:
+        INDEX_READY = False
+        return
+    
+    try:
+        for _, r in df.iterrows():
+            word = str(r.get('word', '')).upper()
+            if not word:
+                continue
+            
+            # L1 индекс
+            try:
+                l1_val = r.get('l1')
+                if l1_val is not None and not pd.isna(l1_val):
+                    l1 = int(float(l1_val))
+                    if l1 not in INDEX_L1:
+                        INDEX_L1[l1] = []
+                    if word not in INDEX_L1[l1]:
+                        INDEX_L1[l1].append(word)
+            except Exception:
+                pass
+            
+            # L2C индекс
+            try:
+                l2c_val = r.get('l2c')
+                if l2c_val is not None and not pd.isna(l2c_val):
+                    l2c = int(float(l2c_val))
+                    if l2c not in INDEX_L2C:
+                        INDEX_L2C[l2c] = []
+                    if word not in INDEX_L2C[l2c]:
+                        INDEX_L2C[l2c].append(word)
+            except Exception:
+                pass
+        
+        INDEX_READY = True
+    except Exception:
+        INDEX_READY = False
+
 def fmt_matches_by_code(l1: int, l2c: int, current_word: str, limit: int = 30) -> Tuple[str, str]:
     matches_l1 = []
     matches_l2c = []
-    try:
-        if LIB_DF is not None and not LIB_DF.empty:
-            for _, r in LIB_DF.iterrows():
-                word = str(r.get('word', '')).upper()
-                if word == current_word.upper():
-                    continue
-                if int(r.get('l1', 0)) == l1:
-                    matches_l1.append(word)
-                if int(r.get('l2c', 0)) == l2c:
-                    matches_l2c.append(word)
-    except Exception:
-        pass
+    current_upper = current_word.upper()
+    
+    # Используем индексы для быстрого поиска
+    if INDEX_READY:
+        try:
+            # L1 совпадения из индекса
+            if l1 in INDEX_L1:
+                matches_l1.extend([w for w in INDEX_L1[l1] if w != current_upper])
+            
+            # L2C совпадения из индекса
+            if l2c in INDEX_L2C:
+                matches_l2c.extend([w for w in INDEX_L2C[l2c] if w != current_upper])
+        except Exception:
+            pass
+    
+    # Персональная библиотека (как раньше)
     try:
         if os.path.exists(PERSONAL_CSV):
             with open(PERSONAL_CSV, 'r', encoding='utf-8') as f:
                 rdr = csv.DictReader(f)
                 for r in rdr:
                     word = str(r.get('text', '')).upper()
-                    if word == current_word.upper():
+                    if word == current_upper:
                         continue
                     try:
                         if int(float(r.get('l1', 0))) == l1:
@@ -1552,16 +1612,21 @@ def fmt_matches_by_code(l1: int, l2c: int, current_word: str, limit: int = 30) -
                         continue
     except Exception:
         pass
+    
     def fmt_list(lst: List[str]) -> List[str]:
         unique = []
         for w in lst:
             if w not in unique:
                 unique.append(w)
         return unique[:limit]
-    unique_l1  = fmt_list(matches_l1)
+    
+    unique_l1 = fmt_list(matches_l1)
+    # Исключаем дубли между l1 и l2c
     unique_l2c = [w for w in fmt_list(matches_l2c) if w not in {uw.upper() for uw in unique_l1}]
+    
     def to_str(lst: List[str]) -> str:
         return ' · '.join(lst) if lst else '—'
+    
     return to_str(unique_l1), to_str(unique_l2c)
 
 # -------------------------
@@ -1611,35 +1676,41 @@ def fmt_matches_personal_by_code(l1: int, l2c: int, current_word: str, limit: in
 def fmt_near_far_words(res: Dict[str, Any], limit_near: int = 5, limit_contrast: int = 5) -> Tuple[str, str]:
     if LIB_DF is None or LIB_DF.empty:
         return '—', '—'
-    target = {'w': res['w'], 'C': res['C'], 'Z': res['Z']}
-    distances = []
-    for _, r in LIB_DF.iterrows():
-        word = str(r.get('word', '')).upper()
-        if word == res['norm']:
-            continue
-        m = {'w': float(r.get('w', 0.0)), 'C': float(r.get('C', 0.0)), 'Z': float(r.get('Z', 0.0))}
-        d = math.sqrt((m['w'] - target['w'])**2 + (m['C'] - target['C'])**2 + (m['Z'] - target['Z'])**2)
-        distances.append((word, d))
-    if not distances:
+    
+    try:
+        # Векторизованный расчёт расстояний
+        df = LIB_DF[['word', 'w', 'C', 'Z']].copy()
+        df['word'] = df['word'].astype(str).str.upper()
+        df['w'] = pd.to_numeric(df['w'], errors='coerce')
+        df['C'] = pd.to_numeric(df['C'], errors='coerce')
+        df['Z'] = pd.to_numeric(df['Z'], errors='coerce')
+        df = df.dropna(subset=['w', 'C', 'Z', 'word'])
+        
+        # Исключаем текущее слово
+        current = str(res['norm']).upper()
+        df = df[df['word'] != current]
+        
+        if df.empty:
+            return '—', '—'
+        
+        # Векторизованный расчёт расстояний
+        w0, C0, Z0 = float(res['w']), float(res['C']), float(res['Z'])
+        df['D'] = ((df['w'] - w0)**2 + (df['C'] - C0)**2 + (df['Z'] - Z0)**2).pow(0.5)
+        
+        # Сортируем по расстоянию
+        df = df.sort_values('D')
+        
+        # Near: D <= 0.30
+        near_df = df[df['D'] <= 0.30].head(limit_near)
+        near_list = [f"{w} ({d:.2f})" for w, d in zip(near_df['word'], near_df['D'])]
+        
+        # Contrast: 0.20 < D <= 1.00
+        contrast_df = df[(df['D'] > 0.20) & (df['D'] <= 1.00)].head(limit_contrast)
+        contrast_list = [f"{w} ({d:.2f})" for w, d in zip(contrast_df['word'], contrast_df['D'])]
+        
+        return (' · '.join(near_list) if near_list else '—', ' · '.join(contrast_list) if contrast_list else '—')
+    except Exception:
         return '—', '—'
-    distances.sort(key=lambda x: x[1])
-    near_list = []
-    seen = set()
-    for w, d in distances:
-        if d <= 0.30 and w not in seen:
-            near_list.append(f"{w} ({d:.2f})")
-            seen.add(w)
-            if len(near_list) >= limit_near:
-                break
-    contrast_list = []
-    seen_c = set()
-    for w, d in distances:
-        if 0.20 < d <= 1.00 and w not in seen_c:
-            contrast_list.append(f"{w} ({d:.2f})")
-            seen_c.add(w)
-            if len(contrast_list) >= limit_contrast:
-                break
-    return (' · '.join(near_list) if near_list else '—', ' · '.join(contrast_list) if contrast_list else '—')
 
     # >>> PATCH: helpers for full-related export
 
@@ -1694,43 +1765,67 @@ def _collect_near_contrast(res: Dict[str, Any],
     """
     Возвращает списки слов из LIB_DF со структурой:
     [{'word': '...', 'D': 0.23, 'W': 1.88, 'C': 0.73, 'Z': 0.41}, ...]
+    Векторизованная версия для ускорения.
     """
     if LIB_DF is None or LIB_DF.empty:
         return [], []
-    target = {'w': float(res['w']), 'C': float(res['C']), 'Z': float(res['Z'])}
-    current = str(res['norm']).upper()
-
-    distances = []
-    for _, r in LIB_DF.iterrows():
-        w = str(r.get('word', '')).upper()
-        if not w or w == current:
-            continue
-        try:
-            m = {'w': float(r.get('w', 0.0)), 'C': float(r.get('C', 0.0)), 'Z': float(r.get('Z', 0.0))}
-            d = math.sqrt((m['w'] - target['w'])**2 + (m['C'] - target['C'])**2 + (m['Z'] - target['Z'])**2)
-            distances.append((w, d, m))
-        except Exception:
-            continue
-
-    distances.sort(key=lambda x: x[1])
-
-    near, contrast = [], []
-    seen_n, seen_c = set(), set()
-    for w, d, m in distances:
-        if d <= 0.30 and w not in seen_n:
-            near.append({'word': w, 'D': round(d, 3), 'W': round(m['w'], 3), 'C': round(m['C'], 3), 'Z': round(m['Z'], 3)})
-            seen_n.add(w)
-            if len(near) >= limit_near:
-                break
-
-    for w, d, m in distances:
-        if 0.20 < d <= 1.00 and w not in seen_c:
-            contrast.append({'word': w, 'D': round(d, 3), 'W': round(m['w'], 3), 'C': round(m['C'], 3), 'Z': round(m['Z'], 3)})
-            seen_c.add(w)
-            if len(contrast) >= limit_contrast:
-                break
-
-    return near, contrast
+    
+    try:
+        # Векторизованный расчёт расстояний
+        df = LIB_DF[['word', 'w', 'C', 'Z']].copy()
+        df['word'] = df['word'].astype(str).str.upper()
+        df['w'] = pd.to_numeric(df['w'], errors='coerce')
+        df['C'] = pd.to_numeric(df['C'], errors='coerce')
+        df['Z'] = pd.to_numeric(df['Z'], errors='coerce')
+        df = df.dropna(subset=['w', 'C', 'Z', 'word'])
+        
+        # Исключаем текущее слово
+        current = str(res['norm']).upper()
+        df = df[df['word'] != current]
+        
+        if df.empty:
+            return [], []
+        
+        # Векторизованный расчёт расстояний
+        w0, C0, Z0 = float(res['w']), float(res['C']), float(res['Z'])
+        df['D'] = ((df['w'] - w0)**2 + (df['C'] - C0)**2 + (df['Z'] - Z0)**2).pow(0.5)
+        
+        # Сортируем по расстоянию
+        df = df.sort_values('D')
+        
+        # Near: D <= 0.30
+        near_df = df[df['D'] <= 0.30].head(limit_near)
+        near = [
+            {
+                'word': w,
+                'D': round(d, 3),
+                'W': round(w_val, 3),
+                'C': round(c_val, 3),
+                'Z': round(z_val, 3)
+            }
+            for w, d, w_val, c_val, z_val in zip(
+                near_df['word'], near_df['D'], near_df['w'], near_df['C'], near_df['Z']
+            )
+        ]
+        
+        # Contrast: 0.20 < D <= 1.00
+        contrast_df = df[(df['D'] > 0.20) & (df['D'] <= 1.00)].head(limit_contrast)
+        contrast = [
+            {
+                'word': w,
+                'D': round(d, 3),
+                'W': round(w_val, 3),
+                'C': round(c_val, 3),
+                'Z': round(z_val, 3)
+            }
+            for w, d, w_val, c_val, z_val in zip(
+                contrast_df['word'], contrast_df['D'], contrast_df['w'], contrast_df['C'], contrast_df['Z']
+            )
+        ]
+        
+        return near, contrast
+    except Exception:
+        return [], []
 # <<< PATCH
 
 # >>> PATCH: fallback for FA — neighborhood-as-codes
