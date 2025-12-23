@@ -1718,24 +1718,34 @@ def _collect_matches_by_code(res: Dict[str, Any], limit_l1: int = 500, limit_l2c
     """
     Возвращает списки слов (в верхнем регистре) с тем же L1 и тем же L2C
     из общей библиотеки (LIB_DF) и персональной, исключая текущее слово.
+    Использует индексы для ускорения.
     """
     l1, l2c, current = int(res['l1']), int(res['l2c']), str(res['norm']).upper()
     seen_l1, seen_l2c = set(), set()
     out_l1, out_l2c = [], []
 
-    # LIB
-    if LIB_DF is not None and not LIB_DF.empty:
-        for _, r in LIB_DF.iterrows():
-            w = str(r.get('word', '')).upper()
-            if not w or w == current:
-                continue
-            try:
-                if int(float(r.get('l1', 0))) == l1 and w not in seen_l1:
-                    out_l1.append(w); seen_l1.add(w)
-                if int(float(r.get('l2c', 0))) == l2c and w not in seen_l2c:
-                    out_l2c.append(w); seen_l2c.add(w)
-            except Exception:
-                continue
+    # LIB - используем индексы для быстрого поиска
+    if INDEX_READY:
+        try:
+            # L1 совпадения из индекса
+            if l1 in INDEX_L1:
+                for w in INDEX_L1[l1]:
+                    if w != current and w not in seen_l1:
+                        out_l1.append(w)
+                        seen_l1.add(w)
+                        if len(out_l1) >= limit_l1:
+                            break
+            
+            # L2C совпадения из индекса
+            if l2c in INDEX_L2C:
+                for w in INDEX_L2C[l2c]:
+                    if w != current and w not in seen_l2c:
+                        out_l2c.append(w)
+                        seen_l2c.add(w)
+                        if len(out_l2c) >= limit_l2c:
+                            break
+        except Exception:
+            pass
 
     # PERSONAL
     try:
