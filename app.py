@@ -1,12 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Kryon Encoder – обновлённый модуль анализа слова.
-
-Этот модуль реализует первую вкладку «Расчёт слова» и сохраняет функциональность
-оригинального приложения (фразовый анализ, библиотека, экспорт). Доработка
-добавляет кастомные стили для заголовков и текста: желтые крупные
-заголовки и увеличенный шрифт для основного текста.
-
+Quantum Encoder (HF v1)
+Deterministic Kryon Encoder calculations + library tools.
 """
 
 import os
@@ -29,7 +24,6 @@ from huggingface_hub import HfApi, CommitOperationAdd
 # =========================
 #  CSS для пользовательских стилей
 # =========================
-# Заголовки будут желтыми и крупными, обычный текст — увеличенным.
 CUSTOM_CSS = """
 /* Основной контейнер для отчёта. Увеличиваем базовый шрифт, чтобы текст было легче читать. */
 .report-body {
@@ -600,16 +594,6 @@ def parse_fii_category_str(cat: str) -> Tuple[str, str]:
         label, desc = s_no_emoji, ''
     return label.strip(), desc.strip()
 
-def distance_metric(m1: Dict[str, float], m2: Dict[str, float]) -> Tuple[float, str]:
-    d = math.sqrt((m1['w'] - m2['w'])**2 + (m1['C'] - m2['C'])**2 + (m1['Z'] - m2['Z'])**2)
-    if d <= 0.20:
-        interp = "созвучие, слова близки по вибрации"
-    elif d <= 1.00:
-        interp = "контраст (дополняют друг друга)"
-    else:
-        interp = "антагонизм, противоположные частоты"
-    return d, interp
-
 def analyze_word(raw_input: str) -> Dict[str, Any]:
     phrase, _ = parse_date_phrase(raw_input or "")
     src = phrase if phrase else raw_input
@@ -677,24 +661,6 @@ def analyze_word(raw_input: str) -> Dict[str, Any]:
         'resonator_max': (r_max_label, r_max_val)
     }
 
-def analyze_two_words(word1: str, word2: str) -> Dict[str, Any]:
-    res1 = analyze_word(word1)
-    res2 = analyze_word(word2)
-    if not res1 or not res2:
-        return {}
-    d, interp = distance_metric(res1, res2)
-    return {
-        'res1': res1,
-        'res2': res2,
-        'diff': {
-            'W': abs(res1['w'] - res2['w']),
-            'C': abs(res1['C'] - res2['C']),
-            'Hm': abs(res1['Hm'] - res2['Hm']),
-            'Z': abs(res1['Z'] - res2['Z']),
-            'D': d,
-            'D_interp': interp
-        }
-    }
 # >>> PATCH: autopick L1/L2C for FA by W-neighborhood
 def _autopick_l1_l2c_for_fa(W_target: float,
                              eps_steps=(0.005, 0.01, 0.02, 0.05)) -> Tuple[Optional[int], Optional[int], float, int]:
@@ -933,9 +899,14 @@ def build_full_json_report(res: Dict[str, Any],
 def analyze_phrase(text: str):
     tokens = re.split(r"[\s,;]+", text or "")
     items = []
+    valid_count = 0
+    limit = 5000
+    
     for tok in tokens:
         if not tok:
             continue
+        if valid_count >= limit:
+            break
         res = analyze_word(tok)
         if res:
             items.append({
@@ -948,9 +919,13 @@ def analyze_phrase(text: str):
                 "Hm": round(res['Hm'], 3),
                 "Z": round(res['Z'], 3)
             })
+            valid_count += 1
+    
     df = pd.DataFrame(items)
     if not df.empty:
-        summary = f"Всего слов: {len(df)}  |  ⌀W = {df['W'].mean():.2f}  |  ⌀Z = {df['Z'].mean():.2f}"
+        total_processed = len(df)
+        limit_note = " (обрезано до 5000)" if valid_count >= limit else ""
+        summary = f"Всего слов: {total_processed}{limit_note} (лимит 5000) | ⌀W = {df['W'].mean():.2f} | ⌀Z = {df['Z'].mean():.2f}"
     else:
         summary = "Нет валидных слов."
         
@@ -1799,15 +1774,14 @@ def _fa_neighborhood_words(res: Dict[str, Any], eps: float = 0.02, limit: int = 
 #  Интерфейс Gradio
 # =========================
 with gr.Blocks(css=CUSTOM_CSS) as demo:
-    gr.Markdown("# Kryon Encoder — Расчёт слова, Фраза, Библиотека, Экспорт")
+    gr.Markdown("# Quantum Encoder")
     status_env = gr.Markdown(value=f"**Repo:** `{SPACE_REPO_ID or '—'}`  |  **HF_TOKEN:** {'✅' if HF_TOKEN else '—'}  |  **Contract:** {ENCODER_VERSION}  |  **Calc:** {CALC_VERSION}")
     with gr.Tabs():
         # ---- Расчёт слова ----
         with gr.Tab("Расчёт слова"):
-            gr.Markdown("## Анализ одного или двух слов")
+            gr.Markdown("## Анализ слова")
             with gr.Row():
-                inp1 = gr.Textbox(label="Слово 1", placeholder="например: ГАРМОНИЯ", lines=1)
-                inp2 = gr.Textbox(label="Слово 2 (опционально)", placeholder="например: ДВИЖЕНИЕ", lines=1)
+                inp1 = gr.Textbox(label="Слово", placeholder="например: ГАРМОНИЯ", lines=1)
             # >>> PATCH: FA UI
             with gr.Row():
                 mode = gr.Radio(choices=["Слово", "FractalAvatar"], value="Слово", label="Режим ввода")
@@ -1826,7 +1800,6 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
 
             with gr.Row():
                 btn_calc  = gr.Button("Рассчитать", variant="primary")
-                btn_comp  = gr.Button("Сравнить", variant="secondary")
             ver_info = gr.Markdown(value=f"Версия ядра Kryon Encoder {ENCODER_VERSION} | Формулы {CALC_VERSION}")
             # выводы анализа
             passport_md = gr.HTML()
@@ -1834,7 +1807,6 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
             fractal_md  = gr.Markdown()
             resonance_md= gr.Markdown()
             advice_md   = gr.Markdown()
-            compare_md  = gr.Markdown()
             dl_btn      = gr.DownloadButton(label="📦 Скачать JSON расчёта", value=None)
             dl_btn_full = gr.DownloadButton(label="📦 Скачать FULL JSON (+связанные)", value=None)
             add_btn_an  = gr.Button("➕ Добавить в персональную библиотеку")
@@ -1842,7 +1814,7 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
             base_indicator = gr.Markdown()
 
             # функция расчёта одного слова / FA
-            def on_calc(w1, w2, mode_val, W_in, C_in, Hm_in, Z_in, Phi_in):
+            def on_calc(w1, mode_val, W_in, C_in, Hm_in, Z_in, Phi_in):
                 _ensure_lib_loaded()
                 if mode_val == "FractalAvatar":
                     try:
@@ -2037,33 +2009,16 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                 path_json = build_json_report(res1)
                 path_full = build_full_json_report(res1)
                 return (full_report, "", "", "", "", path_json, path_full)
-            def on_compare(w1, w2):
-                if not w1 or not w2:
-                    return "Введите два слова для сравнения."
-                comp = analyze_two_words(w1, w2)
-                if not comp:
-                    return "Не удалось выполнить сравнение."
-                r1 = comp['res1']; r2 = comp['res2']; d = comp['diff']
-                table = "|Метрика|" + f"{r1['norm']}|{r2['norm']}|Δ|\n|---|---|---|---|\n"
-                table += f"|L1|{r1['l1']}|{r2['l1']}|—|\n"
-                table += f"|L2C|{r1['l2c']}|{r2['l2c']}|—|\n"
-                table += f"|W|{r1['w']:.3f}|{r2['w']:.3f}|{d['W']:.2f}|\n"
-                table += f"|C|{r1['C']:.3f}|{r2['C']:.3f}|{d['C']:.2f}|\n"
-                table += f"|Hm|{r1['Hm']:.3f}|{r2['Hm']:.3f}|{d['Hm']:.2f}|\n"
-                table += f"|Z|{r1['Z']:.3f}|{r2['Z']:.3f}|{d['Z']:.2f}|\n"
-                table += f"|D(W,C,Z)|—|—|{d['D']:.2f} ({d['D_interp']})|\n"
-                table += f"\n\n**D(W,C,Z) = {d['D']:.2f} → {d['D_interp']}**"
-                return table
             # обработчики
             btn_calc.click(
                 on_calc,
-                inputs=[inp1, inp2, mode, fa_W, fa_C, fa_Hm, fa_Z, fa_Phi],
+                inputs=[inp1, mode, fa_W, fa_C, fa_Hm, fa_Z, fa_Phi],
                 outputs=[passport_md, visual_md, fractal_md, resonance_md, advice_md, dl_btn, dl_btn_full]
             )
             inp1.submit(
-            on_calc,
-            inputs=[inp1, inp2, mode, fa_W, fa_C, fa_Hm, fa_Z, fa_Phi],
-            outputs=[passport_md, visual_md, fractal_md, resonance_md, advice_md, dl_btn, dl_btn_full]
+                on_calc,
+                inputs=[inp1, mode, fa_W, fa_C, fa_Hm, fa_Z, fa_Phi],
+                outputs=[passport_md, visual_md, fractal_md, resonance_md, advice_md, dl_btn, dl_btn_full]
             )
         # ---- Фраза ----
         with gr.Tab("Фраза"):
