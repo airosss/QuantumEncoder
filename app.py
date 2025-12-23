@@ -849,6 +849,7 @@ def build_full_json_report(res: Dict[str, Any],
     l1_list, l2c_list = _collect_matches_by_code(res, limit_l1=limit_l1, limit_l2c=limit_l2c)
     near, contrast = _collect_near_contrast(res, limit_near=limit_near, limit_contrast=limit_contrast)
 
+    # >>> PATCH: FA fallback — если by_L1/by_L2C пустые, подставим окрестность W
     if res.get("fa_mode", False):
         eps_fallback = res.get("fa_autopick", {}).get("eps", 0.02) or 0.02
         if not l1_list:
@@ -1002,7 +1003,7 @@ def already_in_personal(text,phrase)->bool:
 
 def add_to_personal():
     if not LAST_RESULT:
-        return "Сначала сделайте расчёт.", gr.update(value=compute_base_indicator())
+        return ("Сначала сделайте расчёт.", gr.update(value=compute_base_indicator()))
     text=LAST_RESULT["input"]
     phrase=LAST_RESULT["phrase_used"]
     l1=LAST_RESULT["l1"]
