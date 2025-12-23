@@ -699,7 +699,47 @@ def analyze_word(raw_input: str) -> Dict[str, Any]:
     token_kind = detect_token_kind(raw_norm, is_date_phrase, is_fa)
     l2c, words, _, out_of_range = calc_l2c_from_l1(l1)
     if out_of_range or l2c is None:
-        return {}
+        # Возвращаем минимальный результат для out_of_range токенов (не теряем токен)
+        return {
+            'raw': raw_input,
+            'phrase_used': src,
+            'norm': norm,
+            'out_of_range': True,
+            'token_kind': token_kind,
+            'l1': l1,
+            'l2c': None,
+            'w': None,
+            'C': None,
+            'Hm': None,
+            'Z': None,
+            'q_total': None,
+            'fii': None,
+            'cluster_code': None,
+            'cluster_ru': None,
+            'cluster_name': None,
+            'cluster_advice': None,
+            'rt2_tag': False,
+            'res_pair_code': '',
+            'res_pair_en': '',
+            'res_pair_ru': '',
+            'res_pair_value': None,
+            'fractal_pattern': None,
+            'fractal_inhale': 0,
+            'fractal_exhale': 0,
+            'fractal_R': 0.0,
+            'fractal_interp': None,
+            'fii_bar': '',
+            'fii_category': '',
+            'q_bar': '',
+            'first_char': norm[:1] if norm else "",
+            'first_val': KRYON_MAP.get(norm[:1] if norm else "", None),
+            'first_impulse': (None, None, None),
+            'R_phi': None,
+            'R_e': None,
+            'R_pi': None,
+            'R_rt2': None,
+            'resonator_max': (None, None)
+        }
     w, C, Hm, Z = metrics(l1, l2c)
     q_total = (Z + C + Hm) / 3.0
     fii = 10 * (0.4 * Z + 0.3 * q_total + 0.2 * C + 0.1 * Hm - 0.5)
@@ -727,6 +767,8 @@ def analyze_word(raw_input: str) -> Dict[str, Any]:
         'raw': raw_input,
         'phrase_used': src,
         'norm': norm,
+        'out_of_range': False,
+        'token_kind': token_kind,
         'l1': l1,
         'l2c': l2c,
         'w': w,
@@ -759,8 +801,7 @@ def analyze_word(raw_input: str) -> Dict[str, Any]:
         'R_e': R_e,
         'R_pi': R_pi,
         'R_rt2': R_rt2,
-        'resonator_max': (r_max_label, r_max_val),
-        'token_kind': token_kind
+        'resonator_max': (r_max_label, r_max_val)
     }
 
 # >>> PATCH: autopick L1/L2C for FA by W-neighborhood
@@ -909,12 +950,12 @@ def build_json_report(res: Dict[str, Any]) -> str:
         'metrics': {
             'L1': res['l1'],
             'L2C': res['l2c'],
-            'W': round(res['w'], 3),
-            'C': round(res['C'], 3),
-            'Hm': round(res['Hm'], 3),
-            'Z': round(res['Z'], 3),
-            'Q_total': round(res['q_total'], 3),
-            'FII': round(res['fii'], 3)
+            'W': round(res['w'], 3) if res.get('w') is not None else None,
+            'C': round(res['C'], 2) if res.get('C') is not None else None,
+            'Hm': round(res['Hm'], 2) if res.get('Hm') is not None else None,
+            'Z': round(res['Z'], 2) if res.get('Z') is not None else None,
+            'Q_total': round(res['q_total'], 2) if res.get('q_total') is not None else None,
+            'FII': round(res['fii'], 1) if res.get('fii') is not None else None
         },
         'cluster': res['cluster_code'],
         'rt2_tag': res.get('rt2_tag', False),
@@ -974,12 +1015,12 @@ def build_full_json_report(res: Dict[str, Any],
         'metrics': {
             'L1': res['l1'],
             'L2C': res['l2c'],
-            'W': round(res['w'], 3),
-            'C': round(res['C'], 3),
-            'Hm': round(res['Hm'], 3),
-            'Z': round(res['Z'], 3),
-            'Q_total': round(res['q_total'], 3),
-            'FII': round(res['fii'], 3)
+            'W': round(res['w'], 3) if res.get('w') is not None else None,
+            'C': round(res['C'], 2) if res.get('C') is not None else None,
+            'Hm': round(res['Hm'], 2) if res.get('Hm') is not None else None,
+            'Z': round(res['Z'], 2) if res.get('Z') is not None else None,
+            'Q_total': round(res['q_total'], 2) if res.get('q_total') is not None else None,
+            'FII': round(res['fii'], 1) if res.get('fii') is not None else None
         },
         'cluster': res.get('cluster_code', ''),
         'rt2_tag': res.get('rt2_tag', False),
@@ -1019,27 +1060,40 @@ def analyze_phrase(text: str):
             break
         res = analyze_word(tok)
         if res:
-            items.append({
+            # Добавляем все токены в items (включая out_of_range)
+            item = {
                 "word": res['norm'],
                 "phrase_used": res['phrase_used'],
                 "raw_token": tok,
                 "L1": res['l1'],
-                "L2C": res['l2c'],
-                "W": round(res['w'], 3),
-                "C": round(res['C'], 3),
-                "Hm": round(res['Hm'], 3),
-                "Z": round(res['Z'], 3),
+                "L2C": res.get('l2c'),
+                "W": round(res['w'], 3) if res.get('w') is not None else None,
+                "C": round(res['C'], 2) if res.get('C') is not None else None,
+                "Hm": round(res['Hm'], 2) if res.get('Hm') is not None else None,
+                "Z": round(res['Z'], 2) if res.get('Z') is not None else None,
                 "token_kind": res.get("token_kind", "LEXEME"),
                 "cluster": res.get("cluster_code"),
-                "rt2_tag": res.get("rt2_tag", False)
-            })
+                "rt2_tag": res.get("rt2_tag", False),
+                "out_of_range": res.get("out_of_range", False)
+            }
+            items.append(item)
             valid_count += 1
     
     df = pd.DataFrame(items)
     if not df.empty:
         total_processed = len(df)
         limit_note = " (обрезано до 5000)" if valid_count >= limit else ""
-        summary = f"Всего слов: {total_processed}{limit_note} (лимит 5000) | ⌀W = {df['W'].mean():.2f} | ⌀Z = {df['Z'].mean():.2f}"
+        # Средние считаем только по валидным записям (не out_of_range и W/Z не None)
+        if 'out_of_range' in df.columns:
+            valid_df = df[(df['out_of_range'] != True) & (df['W'].notna()) & (df['Z'].notna())]
+        else:
+            valid_df = df[(df['W'].notna()) & (df['Z'].notna())]
+        if not valid_df.empty:
+            avg_w = valid_df['W'].mean()
+            avg_z = valid_df['Z'].mean()
+            summary = f"Всего слов: {total_processed}{limit_note} (лимит 5000) | ⌀W = {avg_w:.2f} | ⌀Z = {avg_z:.2f}"
+        else:
+            summary = f"Всего слов: {total_processed}{limit_note} (лимит 5000) | ⌀W = — | ⌀Z = —"
     else:
         summary = "Нет валидных слов."
         
