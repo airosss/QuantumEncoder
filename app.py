@@ -153,13 +153,6 @@ def reset_to_defaults() -> Tuple[bool, str]:
     except Exception as e:
         return False, f"Ошибка отката: {type(e).__name__}: {e}"
 
-# Загружаем архетипы гексаграмм (если файл отсутствует — создаём базовый)
-try:
-    with open(os.path.join('data','hex_arch_ru.json'), 'r', encoding='utf-8') as _hf:
-        HEX_NAMES_RU = json.load(_hf)
-except Exception:
-    HEX_NAMES_RU = {str(i): f"Гексаграмма {i}" for i in range(1,65)}
-
 # =========================
 #  Kryon-33: базовые вещи
 # =========================
@@ -592,18 +585,6 @@ def analyze_word(raw_input: str) -> Dict[str, Any]:
     pattern, inh, exh, r_coef, r_interp = fractal_unfold(l1)
     fii_b, fii_cat = fii_bar(fii)
     q_b = q_bar(q_total)
-    try:
-        hex_index = int(l2c) % 64
-    except Exception:
-        hex_index = 0
-    if hex_index == 0:
-        hex_index = 64
-    try:
-        next_l2c, _, _ = calc_l2c_from_l1(l2c)
-        line_index = ((abs(int(next_l2c) - int(l2c))) % 6) + 1 if next_l2c else None
-    except Exception:
-        line_index = None
-    hex_arch = HEX_NAMES_RU.get(str(hex_index), f"Гексаграмма {hex_index}")
     first_char = norm[:1] if norm else ""
     first_val = KRYON_MAP.get(first_char, None)
     t,d,m = classify_initial(first_val)
@@ -642,9 +623,6 @@ def analyze_word(raw_input: str) -> Dict[str, Any]:
         'fii_bar': fii_b,
         'fii_category': fii_cat,
         'q_bar': q_b,
-        'hex_index': hex_index,
-        'hex_arch': hex_arch,
-        'line_index': line_index,
         'first_char': first_char,
         'first_val': first_val,
         'first_impulse': (t,d,m),
@@ -744,14 +722,6 @@ def analyze_from_fa(raw_label: str,
     th = float(APP_CFG.get("resonator_threshold", 0.75))
     pair_code, pair_en, pair_ru, r_pair = resonance_pair(W_in, threshold=th)
 
-    try:
-        hex_index = int(l2c) % 64
-    except Exception:
-        hex_index = 0
-    if hex_index == 0:
-        hex_index = 64
-    hex_arch = HEX_NAMES_RU.get(str(hex_index), f"Гексаграмма {hex_index}")
-
     # резонансное пространство
     R_phi = math.exp(-abs(W_in - 1.618))
     R_e   = math.exp(-abs(W_in - 2.718))
@@ -790,9 +760,6 @@ def analyze_from_fa(raw_label: str,
         'fii_bar': fii_b,
         'fii_category': fii_cat,
         'q_bar': q_b,
-        'hex_index': hex_index,
-        'hex_arch': hex_arch,
-        'line_index': None,
         'first_char': None,
         'first_val': None,
         'first_impulse': (None, None, None),
