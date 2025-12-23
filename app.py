@@ -833,7 +833,7 @@ def build_json_report(res: Dict[str, Any]) -> str:
         json.dump(data, f, ensure_ascii=False, indent=2)
     return path
 
-    # >>> PATCH: full JSON report with related words
+# >>> PATCH: full JSON report with related words
 def build_full_json_report(res: Dict[str, Any],
                            limit_l1: int = 500,
                            limit_l2c: int = 500,
@@ -849,14 +849,12 @@ def build_full_json_report(res: Dict[str, Any],
     l1_list, l2c_list = _collect_matches_by_code(res, limit_l1=limit_l1, limit_l2c=limit_l2c)
     near, contrast = _collect_near_contrast(res, limit_near=limit_near, limit_contrast=limit_contrast)
 
-    # >>> PATCH: FA fallback — если by_L1/by_L2C пустые, подставим окрестность W
     if res.get("fa_mode", False):
         eps_fallback = res.get("fa_autopick", {}).get("eps", 0.02) or 0.02
         if not l1_list:
             l1_list = _fa_neighborhood_words(res, eps=eps_fallback, limit=limit_l1)
         if not l2c_list:
             l2c_list = _fa_neighborhood_words(res, eps=eps_fallback, limit=limit_l2c)
-    # <<< PATCH
 
     data = {
         'meta': {
@@ -1713,8 +1711,6 @@ def fmt_near_far_words(res: Dict[str, Any], limit_near: int = 5, limit_contrast:
     except Exception:
         return '—', '—'
 
-    # >>> PATCH: helpers for full-related export
-
 def _collect_matches_by_code(res: Dict[str, Any], limit_l1: int = 500, limit_l2c: int = 500) -> Tuple[List[str], List[str]]:
     """
     Возвращает списки слов (в верхнем регистре) с тем же L1 и тем же L2C
@@ -1889,7 +1885,6 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
             gr.Markdown("## Анализ слова")
             with gr.Row():
                 inp1 = gr.Textbox(label="Слово", placeholder="например: ГАРМОНИЯ", lines=1)
-            # >>> PATCH: FA UI
             with gr.Row():
                 mode = gr.Radio(choices=["Слово", "FractalAvatar"], value="Слово", label="Режим ввода")
 
@@ -1903,7 +1898,6 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
             def _toggle_fa(r):
                 return gr.update(visible=(r=="FractalAvatar"))
             mode.change(_toggle_fa, inputs=mode, outputs=fa_row)
-            # <<< PATCH
 
             with gr.Row():
                 btn_calc  = gr.Button("Рассчитать", variant="primary")
