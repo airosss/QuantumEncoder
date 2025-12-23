@@ -421,8 +421,8 @@ def cluster_from_w(w: float, cfg: dict) -> dict:
         elif pi_bounds[0] <= w_val < pi_bounds[1]:
             cluster = "pi"
         else:
-            # Fallback если не попал ни в один диапазон
-            cluster = "pi"
+            # Не попал ни в один диапазон - возвращаем None
+            cluster = None
     
     # rt2_tag - overlay флаг
     rt2_bounds = bounds.get("rt2", [1.214, 1.614])
@@ -451,7 +451,7 @@ def cluster_by_w(w: float) -> Tuple[str, str]:
     return cluster or "phi", cluster_ru
 
 CLUSTER_ADVICES = {
-    "inversion": ("инверсия", "Инверсия поля. Совет: проверить корректность расчёта."),
+    "inversion": ("инверсия", "Режим сжатия поля. Для событийных токенов/слепков — нормально. Для обычных слов может означать внутреннюю фазу."),
     "phi": ("φ-ядро", "Гармония и стабильность. Совет: добавить e-слово (движение)."),
     "e":   ("e", "Рост и импульс. Совет: добавить φ-слово (покой)."),
     "e-pi":("e–π", "Прорыв, интенсивность. Совет: внести равновесие φ или √2."),
@@ -1581,9 +1581,16 @@ def axis_line_for_w(w: float) -> str:
     pos = int(round((w_clamped - min_w) / (max_w - min_w) * width))
     def mark(val):
         return int(round((val - min_w) / (max_w - min_w) * width))
-    m_phi = mark(1.6)
-    m_e   = mark(2.7)
-    m_epi = mark(3.2)
+    
+    # Берём границы из APP_CFG
+    bounds = APP_CFG.get("cluster_bounds", {})
+    phi_max = bounds.get("phi", [1.00, 1.60])[1]
+    e_max = bounds.get("e", [1.60, 2.70])[1]
+    epi_max = bounds.get("e-pi", [2.70, 3.20])[1]
+    
+    m_phi = mark(phi_max)
+    m_e   = mark(e_max)
+    m_epi = mark(epi_max)
     axis_chars = ['─'] * (width + 1)
     for idx in (m_phi, m_e, m_epi):
         if 0 <= idx <= width:
@@ -2145,7 +2152,7 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                 advice_lines = []
                 advice_lines.append('<div class="section-heading">&gt; Психогеометрический совет</div>')
                 advice_map2 = {
-                    'inversion': "Проверь корректность расчёта. Инверсия поля может указывать на ошибку.",
+                    'inversion': "Режим сжатия поля. Для событийных токенов/слепков — нормально. Для обычных слов может означать внутреннюю фазу.",
                     'phi': "Добавь e-слова (ПУТЬ, ДВИЖЕНИЕ, ПРОЦЕСС). Для углубления — √2-слова (ЗЕРКАЛО, ОТРАЖЕНИЕ).",
                     'e':   "Дополни φ-словами (СПОКОЙ, РАВНОВЕСИЕ)…",
                     'e-pi':"Сильный всплеск. Соедини с φ/√2, чтобы не увести в турбулентность…",
