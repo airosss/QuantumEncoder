@@ -80,6 +80,7 @@ LIB_COLS = [
     "C",
     "Hm",
     "Z",
+    "token_kind",
 ]
 
 # =========================
@@ -364,6 +365,32 @@ def detect_token_kind(token: str, is_date_phrase: bool, is_fa: bool) -> str:
         return "FA"
     if is_date_phrase:
         return "EVENT"
+    return "LEXEME"
+
+
+def infer_token_kind(token_kind: Optional[str], field: Optional[str], role: Optional[str]) -> str:
+    """
+    Определяет token_kind по правилам QPM v2, если он не задан явно.
+    
+    Правила:
+    - если (field=="TIME" and role=="temporal") -> EVENT
+    - если role=="marker" -> EVENT
+    - если role=="state" -> LEXEME
+    - иначе default LEXEME
+    """
+    if token_kind and str(token_kind).strip().upper() in ("EVENT", "LEXEME", "FA"):
+        return str(token_kind).strip().upper()
+    
+    field_str = (field or "").strip().upper()
+    role_str = (role or "").strip().lower()
+    
+    if field_str == "TIME" and role_str == "temporal":
+        return "EVENT"
+    if role_str == "marker":
+        return "EVENT"
+    if role_str == "state":
+        return "LEXEME"
+    
     return "LEXEME"
 
 # =========================
@@ -1182,7 +1209,7 @@ def add_to_personal():
             msg = commit_ops([PERSONAL_CSV, os.path.join(PERSONAL_DIR,".keep")], "Ensure personal in repo")
         return (f"Уже в персональной. {msg}", gr.update(value=compute_base_indicator()))
     df = pd.read_csv(PERSONAL_CSV, encoding="utf-8")
-    df.loc[len(df)] = [text, phrase, int(l1), int(l2c), float(f"{w:.6f}"),
+    df.loc[len(df)] = [text, phrase, safe_int(l1, 0), safe_int(l2c, 0), float(f"{w:.6f}"),
                        float(f"{C:.6f}"), float(f"{Hm:.6f}"), float(f"{Z:.6f}"),
                        datetime.datetime.utcnow().isoformat()+"Z"]
     atomic_write_csv(df, PERSONAL_CSV)
@@ -1207,6 +1234,13 @@ def parse_bool(x) -> bool:
     - если x str -> strip/lower и True только для: ("true","1","yes","y","да")
     - для всего остального -> False
     """
+    # Обработка pandas/NaN
+    try:
+        if pd.isna(x):
+            return False
+    except Exception:
+        pass
+    
     if isinstance(x, bool):
         return x
     if isinstance(x, (int, float)):
@@ -1218,6 +1252,39 @@ def parse_bool(x) -> bool:
         return s in ("true", "1", "yes", "y", "да")
     return False
 
+
+def safe_int(v, default=0):
+    """Безопасное преобразование в int с обработкой NaN и пустых строк."""
+    try:
+        if pd.isna(v):
+            return default
+    except Exception:
+        pass
+    try:
+        s = str(v).strip()
+        if s == "":
+            return default
+        return int(float(s))
+    except Exception:
+        return default
+
+
+def safe_float(v, default=0.0):
+    """Безопасное преобразование в float с обработкой NaN и пустых строк."""
+    try:
+        if pd.isna(v):
+            return default
+    except Exception:
+        pass
+    try:
+        s = str(v).strip()
+        if s == "":
+            return default
+        return float(s)
+    except Exception:
+        return default
+
+
 def force_recalc_row(
     word: str,
     sphere: str,
@@ -1227,7 +1294,8 @@ def force_recalc_row(
     l1: Optional[int] = None,
     l2c: Optional[int] = None,
     field: Optional[str] = None,
-    role: Optional[str] = None
+    role: Optional[str] = None,
+    token_kind: Optional[str] = None
 ):
     if l1 is None:
         _, l1 = calc_l1_from_string(word)
@@ -1235,11 +1303,12 @@ def force_recalc_row(
         l2c, _, _, out_of_range = calc_l2c_from_l1(int(l1))
         if out_of_range or l2c is None:
             # Возвращаем минимальный результат при out_of_range
+            inferred_tk = infer_token_kind(token_kind, field, role)
             return {
                 'word': word,
                 'sphere': sphere,
                 'tone': tone,
-                'allowed': allowed,
+                'allowed': parse_bool(allowed),
                 'notes': notes or "",
                 'l1': None,
                 'l2c': None,
@@ -1248,7 +1317,8 @@ def force_recalc_row(
                 'Hm': None,
                 'Z': None,
                 'field': field or "",
-                'role': role or ""
+                'role': role or "",
+                'token_kind': inferred_tk
             }
 
     w, C, Hm, Z = metrics(int(l1), int(l2c))
@@ -1256,6 +1326,8 @@ def force_recalc_row(
     notes_str = "" if notes is None else str(notes).strip()
     if notes_str.lower() == "nan":
         notes_str = ""
+
+    inferred_tk = infer_token_kind(token_kind, field, role)
 
     return {
         "word": word,
@@ -1271,6 +1343,7 @@ def force_recalc_row(
         "C": float(C),
         "Hm": float(Hm),
         "Z": float(Z),
+        "token_kind": inferred_tk,
     }
 
 
@@ -1282,6 +1355,10 @@ def soft_dedup(df: pd.DataFrame) -> pd.DataFrame:
     for c in LIB_COLS:
         if c not in df.columns:
             df[c] = ""
+
+    # Нормализуем NaN перед groupby, чтобы field/role/token_kind не стали строкой "nan"
+    for c in ["word", "sphere", "tone", "field", "role", "token_kind", "notes"]:
+        df[c] = df[c].fillna("")
 
     def uniq_notes(series, sep=" | "):
         """Собирает уникальные непустые значения и склеивает через sep."""
@@ -1300,12 +1377,12 @@ def soft_dedup(df: pd.DataFrame) -> pd.DataFrame:
                 return s
         return ""
 
-    # Группируем по ключу дедупликации
-    grouped = df.groupby(["word", "sphere", "tone"], as_index=False)
+    # Группируем по ключу дедупликации: (word, sphere, tone, field, role)
+    grouped = df.groupby(["word", "sphere", "tone", "field", "role"], as_index=False)
     
     deduped_rows = []
     
-    for (word, sphere, tone), group in grouped:
+    for (word, sphere, tone, field, role), group in grouped:
         # Нормализуем word и пропускаем пустые
         word_norm = normalize(str(word).strip().upper()) if word else ""
         if not word_norm:
@@ -1315,9 +1392,17 @@ def soft_dedup(df: pd.DataFrame) -> pd.DataFrame:
         allowed_vals = [parse_bool(x) for x in group["allowed"]]
         allowed = any(allowed_vals)  # True если хотя бы один True
         
-        field = pick_first_nonempty(group["field"])
-        role = pick_first_nonempty(group["role"])
+        field_str = pick_first_nonempty(group["field"]) if not field else str(field).strip()
+        role_str = pick_first_nonempty(group["role"]) if not role else str(role).strip()
         notes = uniq_notes(group["notes"], sep=" | ")
+        
+        # Обрабатываем token_kind: берём первое непустое значение из группы, иначе выводим по правилам
+        token_kind_val = None
+        if "token_kind" in group.columns:
+            for tk in group["token_kind"]:
+                if tk and str(tk).strip().upper() in ("EVENT", "LEXEME", "FA"):
+                    token_kind_val = str(tk).strip().upper()
+                    break
         
         # Пересчитываем метрики детерминированно из word
         row = force_recalc_row(
@@ -1326,8 +1411,9 @@ def soft_dedup(df: pd.DataFrame) -> pd.DataFrame:
             tone=str(tone).strip() if tone else "neutral",
             allowed=allowed,
             notes=notes,
-            field=field if field else None,
-            role=role if role else None
+            field=field_str if field_str else None,
+            role=role_str if role_str else None,
+            token_kind=token_kind_val
         )
         
         deduped_rows.append(row)
@@ -1358,12 +1444,18 @@ def import_json_library(file_obj):
             notes  = it.get("notes", "")
             field  = (it.get("field") or "").strip()
             role   = (it.get("role") or "").strip()
+            token_kind_raw = (it.get("token_kind") or "").strip().upper()
+            # Валидация token_kind: только EVENT, LEXEME, FA
+            if token_kind_raw and token_kind_raw in ("EVENT", "LEXEME", "FA"):
+                token_kind = token_kind_raw
+            else:
+                token_kind = None  # будет выведен через infer_token_kind
             l1     = it.get("l1", None)
             l2c    = it.get("l2c", None)
 
             row = force_recalc_row(
                 word, sphere, tone, allowed, notes, l1, l2c,
-                field=field, role=role
+                field=field, role=role, token_kind=token_kind
             )
             rows.append(row)
 
@@ -1408,10 +1500,15 @@ def load_spheres_into_memory():
                     tone=str(r.get("tone", "neutral")),
                     allowed=parse_bool(r.get("allowed", True)),
                     notes=r.get("notes", ""),
-                    l1=int(r.get("l1", 0)) if not pd.isna(r.get("l1", 0)) else None,
-                    l2c=int(r.get("l2c", 0)) if not pd.isna(r.get("l2c", 0)) else None,
+                    l1=safe_int(r.get("l1", None), None),
+                    l2c=safe_int(r.get("l2c", None), None),
                     field=str(r.get("field", "")).strip(),
                     role=str(r.get("role", "")).strip(),
+                    token_kind=(lambda tk, f, ro: tk if tk and tk in ("EVENT", "LEXEME", "FA") else None)(
+                        str(r.get("token_kind", "")).strip().upper() if not pd.isna(r.get("token_kind", None)) and str(r.get("token_kind", "")).strip() else None,
+                        str(r.get("field", "")).strip(),
+                        str(r.get("role", "")).strip()
+                    ),
                 ))
 
         except Exception:
@@ -1562,7 +1659,7 @@ def filter_library_view(sphere_query:str, cluster_query:str, search:str):
         q = normalize(search)
         if q:
             d = d[d["word"].str.contains(q)]
-    cols = ["word","sphere","tone","l1","l2c","w","C","Hm","Z","cluster","notes"]
+    cols = ["word","sphere","tone","field","role","token_kind","l1","l2c","w","C","Hm","Z","cluster","notes"]
     return d[cols].sort_values(["Z","w"], ascending=[False,True]).reset_index(drop=True)
 
 def sha256_of_sources():
@@ -1602,12 +1699,17 @@ def save_as_sphere_csvs():
                     "field":  str(r.get("field", "")).strip(),
                     "role":   str(r.get("role", "")).strip(),
                     "notes":  ("" if pd.isna(r.get("notes", "")) else str(r.get("notes", ""))),
-                    "l1":     int(r.get("l1", 0)),
-                    "l2c":    int(r.get("l2c", 0)),
-                    "w":      float(r.get("w", 0.0)),
-                    "C":      float(r.get("C", 0.0)),
-                    "Hm":     float(r.get("Hm", 0.0)),
-                    "Z":      float(r.get("Z", 0.0)),
+                    "l1":     safe_int(r.get("l1", None), 0),
+                    "l2c":    safe_int(r.get("l2c", None), 0),
+                    "w":      safe_float(r.get("w", None), 0.0),
+                    "C":      safe_float(r.get("C", None), 0.0),
+                    "Hm":     safe_float(r.get("Hm", None), 0.0),
+                    "Z":      safe_float(r.get("Z", None), 0.0),
+                    "token_kind": (lambda tk, f, ro: tk if tk and tk in ("EVENT", "LEXEME", "FA") else infer_token_kind(None, f, ro))(
+                        str(r.get("token_kind", "")).strip().upper() if not pd.isna(r.get("token_kind", None)) and str(r.get("token_kind", "")).strip() else None,
+                        str(r.get("field", "")).strip(),
+                        str(r.get("role", "")).strip()
+                    ),
                 }
                 expanded_rows.append(rr)
         df_expanded = pd.DataFrame(expanded_rows)
@@ -1615,7 +1717,7 @@ def save_as_sphere_csvs():
         for sph, df in df_expanded.groupby("sphere"):
             slug = slugify(sph)
             path = f"./spheres/sphere_{slug}.csv"
-            cols = ["word","sphere","tone","allowed","field","role","notes","l1","l2c","w","C","Hm","Z"]
+            cols = ["word","sphere","tone","allowed","field","role","notes","l1","l2c","w","C","Hm","Z","token_kind"]
             for c in cols:
                 if c not in df.columns:
                     df[c] = None
@@ -1723,8 +1825,8 @@ def rebuild_indexes(df: pd.DataFrame):
             # L1 индекс
             try:
                 l1_val = r.get('l1')
-                if l1_val is not None and not pd.isna(l1_val):
-                    l1 = int(float(l1_val))
+                l1 = safe_int(l1_val, None)
+                if l1 is not None:
                     if l1 not in INDEX_L1:
                         INDEX_L1[l1] = []
                     if word not in INDEX_L1[l1]:
@@ -1735,8 +1837,8 @@ def rebuild_indexes(df: pd.DataFrame):
             # L2C индекс
             try:
                 l2c_val = r.get('l2c')
-                if l2c_val is not None and not pd.isna(l2c_val):
-                    l2c = int(float(l2c_val))
+                l2c = safe_int(l2c_val, None)
+                if l2c is not None:
                     if l2c not in INDEX_L2C:
                         INDEX_L2C[l2c] = []
                     if word not in INDEX_L2C[l2c]:
@@ -1776,9 +1878,11 @@ def fmt_matches_by_code(l1: int, l2c: int, current_word: str, limit: int = 30) -
                     if word == current_upper:
                         continue
                     try:
-                        if int(float(r.get('l1', 0))) == l1:
+                        r_l1 = safe_int(r.get('l1', None), None)
+                        if r_l1 is not None and r_l1 == l1:
                             matches_l1.append(word)
-                        if int(float(r.get('l2c', 0))) == l2c:
+                        r_l2c = safe_int(r.get('l2c', None), None)
+                        if r_l2c is not None and r_l2c == l2c:
                             matches_l2c.append(word)
                     except Exception:
                         continue
@@ -1822,10 +1926,12 @@ def fmt_matches_personal_by_code(l1: int, l2c: int, current_word: str, limit: in
                     if word == current_word.upper():
                         continue
                     try:
-                        # сравниваем l1 и l2c через float/ int, поскольку значения в CSV могут быть float-подобные
-                        if int(float(r.get('l1', 0))) == l1:
+                        # сравниваем l1 и l2c через safe_int, поскольку значения в CSV могут быть пустыми/NaN
+                        r_l1 = safe_int(r.get('l1', None), None)
+                        if r_l1 is not None and r_l1 == l1:
                             matches_l1.append(word)
-                        if int(float(r.get('l2c', 0))) == l2c:
+                        r_l2c = safe_int(r.get('l2c', None), None)
+                        if r_l2c is not None and r_l2c == l2c:
                             matches_l2c.append(word)
                     except Exception:
                         continue
@@ -1928,9 +2034,11 @@ def _collect_matches_by_code(res: Dict[str, Any], limit_l1: int = 500, limit_l2c
                     if not w or w == current:
                         continue
                     try:
-                        if int(float(r.get('l1', 0))) == l1 and w not in seen_l1:
+                        r_l1 = safe_int(r.get('l1', None), None)
+                        if r_l1 is not None and r_l1 == l1 and w not in seen_l1:
                             out_l1.append(w); seen_l1.add(w)
-                        if int(float(r.get('l2c', 0))) == l2c and w not in seen_l2c:
+                        r_l2c = safe_int(r.get('l2c', None), None)
+                        if r_l2c is not None and r_l2c == l2c and w not in seen_l2c:
                             out_l2c.append(w); seen_l2c.add(w)
                     except Exception:
                         continue
@@ -2443,8 +2551,10 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                 # пересчёт метрик на основе текущего APP_CFG (metrics уже берет sigma из APP_CFG)
                     for idx, r in df.iterrows():
                         try:
-                            l1 = int(float(r.get("l1", 0)))
-                            l2c = int(float(r.get("l2c", 0)))
+                            l1 = safe_int(r.get("l1", None), None)
+                            l2c = safe_int(r.get("l2c", None), None)
+                            if l1 is None or l2c is None:
+                                continue
                             w, C, Hm, Z = metrics(l1, l2c)
                             df.at[idx, "w"]  = float(f"{w:.6f}")
                             df.at[idx, "C"]  = float(f"{C:.6f}")
@@ -2545,7 +2655,10 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                             df_p["tone"] = "neutral"
                             df_p["allowed"] = True
                             df_p["notes"] = ""
-                            df_p = df_p[["word", "sphere", "tone", "allowed", "notes", "l1", "l2c", "w", "C", "Hm", "Z"]]
+                            df_p["field"] = ""
+                            df_p["role"] = ""
+                            df_p["token_kind"] = "LEXEME"
+                            df_p = df_p[["word", "sphere", "tone", "allowed", "notes", "l1", "l2c", "w", "C", "Hm", "Z", "field", "role", "token_kind"]]
                             df = pd.concat([df, df_p], ignore_index=True) if not df.empty else df_p.copy()
                     except Exception:
                         pass
@@ -2560,21 +2673,32 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                 for _, r in dff.iterrows():
                     try:
                         norm_word = normalize(str(r.get("word", "")))
+                        token_kind_val = r.get("token_kind", None)
+                        field_val = str(r.get("field", "")).strip()
+                        role_val = str(r.get("role", "")).strip()
+                        if pd.isna(token_kind_val) or not str(token_kind_val).strip():
+                            token_kind_val = None
+                        else:
+                            token_kind_val = str(token_kind_val).strip().upper()
+                            if token_kind_val not in ("EVENT", "LEXEME", "FA"):
+                                token_kind_val = None
+                        if token_kind_val is None:
+                            token_kind_val = infer_token_kind(None, field_val, role_val)
                         items.append({
                             "word": norm_word,
                             "sphere": str(r.get("sphere", "")).strip(),
                             "tone": str(r.get("tone", "")).strip(),
                             "allowed": parse_bool(r.get("allowed", True)),
-                            "field": str(r.get("field", "")).strip(),
-                            "role":  str(r.get("role", "")).strip(),
+                            "field": field_val,
+                            "role":  role_val,
                             "notes": str(r.get("notes", "")).strip(),
-                            "l1": int(float(r.get("l1", 0))) if not pd.isna(r.get("l1", 0)) else 0,
-                            "l2c": int(float(r.get("l2c", 0))) if not pd.isna(r.get("l2c", 0)) else 0,
-                            "w": float(r.get("w", 0.0)),
-                            "C": float(r.get("C", 0.0)),
-                            "Hm": float(r.get("Hm", 0.0)),
-                            "Z": float(r.get("Z", 0.0)),
-                            "token_kind": "LEXEME"
+                            "l1": safe_int(r.get("l1", None), 0),
+                            "l2c": safe_int(r.get("l2c", None), 0),
+                            "w": safe_float(r.get("w", None), 0.0),
+                            "C": safe_float(r.get("C", None), 0.0),
+                            "Hm": safe_float(r.get("Hm", None), 0.0),
+                            "Z": safe_float(r.get("Z", None), 0.0),
+                            "token_kind": token_kind_val
                         })
                     except Exception:
                         continue
@@ -2623,7 +2747,10 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                             df_p["tone"] = "neutral"
                             df_p["allowed"] = True
                             df_p["notes"] = ""
-                            df_p = df_p[["word", "sphere", "tone", "allowed", "notes", "l1", "l2c", "w", "C", "Hm", "Z"]]
+                            df_p["field"] = ""
+                            df_p["role"] = ""
+                            df_p["token_kind"] = "LEXEME"
+                            df_p = df_p[["word", "sphere", "tone", "allowed", "notes", "l1", "l2c", "w", "C", "Hm", "Z", "field", "role", "token_kind"]]
                             df = pd.concat([df, df_p], ignore_index=True) if not df.empty else df_p.copy()
                     except Exception:
                         pass
@@ -2633,9 +2760,9 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                 if dff.empty:
                     return f"Не найдены записи для сферы '{sphere_query}'.", None
 
-                for c in ["field", "role"]:
+                for c in ["field", "role", "token_kind"]:
                     if c not in dff.columns:
-                        dff[c] = ""
+                        dff[c] = "" if c != "token_kind" else "LEXEME"
 
                 # сохраняем CSV
                 path = f"/tmp/export_sphere_{int(time.time())}.csv"
@@ -2677,34 +2804,43 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                     df_pers["tone"] = "neutral"
                     df_pers["allowed"] = True
                     df_pers["notes"] = ""
+                    df_pers["field"] = ""
+                    df_pers["role"] = ""
+                    df_pers["token_kind"] = "LEXEME"
 
-                    df = df_pers[["word","sphere","tone","allowed","notes","l1","l2c","w","C","Hm","Z"]].copy()
-
-                    # ✅ СТРАХОВКА КОНТРАКТА (нужна, потому что personal.csv не содержит field/role)
-                    for c in ["field", "role"]:
-                        if c not in df.columns:
-                            df[c] = ""
+                    df = df_pers[["word","sphere","tone","allowed","notes","l1","l2c","w","C","Hm","Z","field","role","token_kind"]].copy()
 
                     # Формируем список элементов
                     items = []
                     try:
                         for _, r in df.iterrows():
                             norm_word = normalize(str(r.get("word", "")))
+                            token_kind_val = r.get("token_kind", None)
+                            field_val = str(r.get("field", "")).strip()
+                            role_val = str(r.get("role", "")).strip()
+                            if pd.isna(token_kind_val) or not str(token_kind_val).strip():
+                                token_kind_val = None
+                            else:
+                                token_kind_val = str(token_kind_val).strip().upper()
+                                if token_kind_val not in ("EVENT", "LEXEME", "FA"):
+                                    token_kind_val = None
+                            if token_kind_val is None:
+                                token_kind_val = infer_token_kind(None, field_val, role_val)
                             items.append({
                                 "word": norm_word,
                                 "sphere": str(r.get("sphere", "прочее")),
                                 "tone": str(r.get("tone", "neutral")),
                                 "allowed": parse_bool(r.get("allowed", True)),
-                                "field": str(r.get("field", "")).strip(),
-                                "role":  str(r.get("role", "")).strip(),
+                                "field": field_val,
+                                "role":  role_val,
                                 "notes": "" if pd.isna(r.get("notes")) else str(r.get("notes")).strip(),
-                                "l1": int(float(r.get("l1", 0))) if not pd.isna(r.get("l1")) else 0,
-                                "l2c": int(float(r.get("l2c", 0))) if not pd.isna(r.get("l2c")) else 0,
-                                "w": float(r.get("w", 0.0)) if not pd.isna(r.get("w")) else 0.0,
-                                "C": float(r.get("C", 0.0)) if not pd.isna(r.get("C")) else 0.0,
-                                "Hm": float(r.get("Hm", 0.0)) if not pd.isna(r.get("Hm")) else 0.0,
-                                "Z": float(r.get("Z", 0.0)) if not pd.isna(r.get("Z")) else 0.0,
-                                "token_kind": "LEXEME"
+                                "l1": safe_int(r.get("l1", None), 0),
+                                "l2c": safe_int(r.get("l2c", None), 0),
+                                "w": safe_float(r.get("w", None), 0.0),
+                                "C": safe_float(r.get("C", None), 0.0),
+                                "Hm": safe_float(r.get("Hm", None), 0.0),
+                                "Z": safe_float(r.get("Z", None), 0.0),
+                                "token_kind": token_kind_val
                             })
                     except Exception:
                         return "Ошибка преобразования данных.", None
@@ -2738,7 +2874,10 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                             df_pers["tone"] = "neutral"
                             df_pers["allowed"] = True
                             df_pers["notes"] = ""
-                            df_pers = df_pers[["word","sphere","tone","allowed","notes","l1","l2c","w","C","Hm","Z"]]
+                            df_pers["field"] = ""
+                            df_pers["role"] = ""
+                            df_pers["token_kind"] = "LEXEME"
+                            df_pers = df_pers[["word","sphere","tone","allowed","notes","l1","l2c","w","C","Hm","Z","field","role","token_kind"]]
                             df = pd.concat([df, df_pers], ignore_index=True)
                     except Exception:
                         pass
@@ -2746,31 +2885,42 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                 if df is None or df.empty:
                     return "Библиотека пуста.", None
 
-                # ✅ СТРАХОВКА КОНТРАКТА (нужна, потому что personal.csv не содержит field/role)
-                for c in ["field", "role"]:
+                # ✅ СТРАХОВКА КОНТРАКТА (нужна, потому что personal.csv не содержит field/role/token_kind)
+                for c in ["field", "role", "token_kind"]:
                     if c not in df.columns:
-                        df[c] = ""
+                        df[c] = "" if c != "token_kind" else "LEXEME"
 
                 # Формируем список элементов
                 items = []
                 try:
                     for _, r in df.iterrows():
                         norm_word = normalize(str(r.get("word", "")))
+                        token_kind_val = r.get("token_kind", None)
+                        field_val = str(r.get("field", "")).strip()
+                        role_val = str(r.get("role", "")).strip()
+                        if pd.isna(token_kind_val) or not str(token_kind_val).strip():
+                            token_kind_val = None
+                        else:
+                            token_kind_val = str(token_kind_val).strip().upper()
+                            if token_kind_val not in ("EVENT", "LEXEME", "FA"):
+                                token_kind_val = None
+                        if token_kind_val is None:
+                            token_kind_val = infer_token_kind(None, field_val, role_val)
                         items.append({
                             "word": norm_word,
                             "sphere": str(r.get("sphere", "прочее")),
                             "tone": str(r.get("tone", "neutral")),
                             "allowed": parse_bool(r.get("allowed", True)),
-                            "field": str(r.get("field", "")).strip(),
-                            "role":  str(r.get("role", "")).strip(),
+                            "field": field_val,
+                            "role":  role_val,
                             "notes": "" if pd.isna(r.get("notes")) else str(r.get("notes")).strip(),
-                            "l1": int(float(r.get("l1", 0))) if not pd.isna(r.get("l1")) else 0,
-                            "l2c": int(float(r.get("l2c", 0))) if not pd.isna(r.get("l2c")) else 0,
-                            "w": float(r.get("w", 0.0)) if not pd.isna(r.get("w")) else 0.0,
-                            "C": float(r.get("C", 0.0)) if not pd.isna(r.get("C")) else 0.0,
-                            "Hm": float(r.get("Hm", 0.0)) if not pd.isna(r.get("Hm")) else 0.0,
-                            "Z": float(r.get("Z", 0.0)) if not pd.isna(r.get("Z")) else 0.0,
-                            "token_kind": "LEXEME"
+                            "l1": safe_int(r.get("l1", None), 0),
+                            "l2c": safe_int(r.get("l2c", None), 0),
+                            "w": safe_float(r.get("w", None), 0.0),
+                            "C": safe_float(r.get("C", None), 0.0),
+                            "Hm": safe_float(r.get("Hm", None), 0.0),
+                            "Z": safe_float(r.get("Z", None), 0.0),
+                            "token_kind": token_kind_val
                         })
                 except Exception:
                     return "Ошибка преобразования данных.", None
@@ -2793,6 +2943,155 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
 
             # обработчик кнопки экспорта библиотеки (вся/персональная)
             export_btn.click(handle_export_json, inputs=[export_source], outputs=[export_status, export_dl])
+
+            # ----------- Экспорт по месяцу (tone) -----------
+            gr.Markdown("#### Экспорт по месяцу (tone)")
+            
+            with gr.Row():
+                month_tone_input = gr.Textbox(
+                    label="Месяц (tone)",
+                    placeholder="2025-12",
+                    value="",
+                    scale=3
+                )
+                month_export_btn = gr.Button(
+                    "Сформировать JSON месяца",
+                    variant="primary",
+                    scale=1
+                )
+            
+            month_export_status = gr.Markdown()
+            month_export_dl = gr.DownloadButton(label="Скачать JSON месяца", value=None)
+
+            def handle_export_month(tone: str):
+                """
+                Экспортирует записи для указанного месяца (tone) из сферы "Quantum Prognosis Monthly".
+                Формирует JSON в формате HF-import с метаданными и списком конфликтов.
+                """
+                target_tone = (tone or "").strip()
+                if not target_tone:
+                    return "Введите месяц в формате YYYY-MM (например, 2025-12).", None
+                
+                _ensure_lib_loaded()
+                if LIB_DF is None or LIB_DF.empty:
+                    return "Библиотека пуста.", None
+                
+                # Фильтруем: sphere == "Quantum Prognosis Monthly" (точное совпадение) и tone == target
+                df_filtered = LIB_DF[
+                    (LIB_DF["sphere"] == "Quantum Prognosis Monthly") & 
+                    (LIB_DF["tone"] == target_tone)
+                ].copy()
+                
+                if df_filtered.empty:
+                    return f"Не найдены записи для месяца '{target_tone}' в сфере 'Quantum Prognosis Monthly'.", None
+                
+                # Формируем items в формате HF-import
+                items = []
+                for _, r in df_filtered.iterrows():
+                    token_kind_val = r.get("token_kind", None)
+                    field_val = str(r.get("field", "")).strip()
+                    role_val = str(r.get("role", "")).strip()
+                    if pd.isna(token_kind_val) or not str(token_kind_val).strip():
+                        token_kind_val = None
+                    else:
+                        token_kind_val = str(token_kind_val).strip().upper()
+                        if token_kind_val not in ("EVENT", "LEXEME", "FA"):
+                            token_kind_val = None
+                    if token_kind_val is None:
+                        token_kind_val = infer_token_kind(None, field_val, role_val)
+                    items.append({
+                        "word": normalize(str(r.get("word", ""))),
+                        "sphere": str(r.get("sphere", "")).strip(),
+                        "tone": str(r.get("tone", "")).strip(),
+                        "allowed": parse_bool(r.get("allowed", True)),
+                        "field": field_val,
+                        "role": role_val,
+                        "notes": "" if pd.isna(r.get("notes")) else str(r.get("notes")).strip(),
+                        "token_kind": token_kind_val
+                    })
+                
+                # Подсчитываем статистику
+                total = len(items)
+                by_field = {}
+                by_role = {}
+                by_token_kind = {}
+                
+                for item in items:
+                    field = item.get("field", "")
+                    role = item.get("role", "")
+                    tk = item.get("token_kind", "LEXEME")
+                    
+                    by_field[field] = by_field.get(field, 0) + 1
+                    by_role[role] = by_role.get(role, 0) + 1
+                    by_token_kind[tk] = by_token_kind.get(tk, 0) + 1
+                
+                # Находим конфликты: один и тот же word встречается в разных field (внутри target_tone)
+                conflicts = []
+                word_fields_map = {}
+                
+                for item in items:
+                    word = item.get("word", "")
+                    field = item.get("field", "")
+                    role = item.get("role", "")
+                    
+                    if word not in word_fields_map:
+                        word_fields_map[word] = {"fields": set(), "roles": set(), "count": 0}
+                    
+                    word_fields_map[word]["fields"].add(field)
+                    word_fields_map[word]["roles"].add(role)
+                    word_fields_map[word]["count"] += 1
+                
+                for word, data in word_fields_map.items():
+                    if len(data["fields"]) > 1:
+                        conflicts.append({
+                            "word": word,
+                            "fields": sorted(list(data["fields"])),
+                            "roles": sorted(list(data["roles"])),
+                            "rows": data["count"]
+                        })
+                
+                # Формируем meta
+                meta = {
+                    "generated_at": datetime.datetime.utcnow().isoformat() + "Z",
+                    "encoder_version": ENCODER_VERSION,
+                    "target_tone": target_tone,
+                    "counts": {
+                        "total": total,
+                        "by_field": by_field,
+                        "by_role": by_role,
+                        "by_token_kind": by_token_kind
+                    },
+                    "conflicts": conflicts
+                }
+                
+                # Формируем итоговый JSON
+                data = {
+                    "meta": meta,
+                    "library": items
+                }
+                
+                # Сохраняем файл
+                ts = int(time.time())
+                path = f"/tmp/export_month_{target_tone}_{ts}.json"
+                try:
+                    with open(path, "w", encoding="utf-8") as f:
+                        json.dump(data, f, ensure_ascii=False, indent=2)
+                except Exception as e:
+                    return f"Ошибка записи файла: {e}", None
+                
+                status_msg = f"Экспортировано записей: {total}.\n"
+                if conflicts:
+                    status_msg += f"⚠️ Обнаружено конфликтов: {len(conflicts)}."
+                else:
+                    status_msg += "Конфликтов не обнаружено."
+                
+                return status_msg, path
+
+            month_export_btn.click(
+                handle_export_month,
+                inputs=[month_tone_input],
+                outputs=[month_export_status, month_export_dl]
+            )
     # --- Инициализация при запуске ---
     def _init_controls():
         _ensure_lib_loaded()
