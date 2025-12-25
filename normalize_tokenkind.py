@@ -146,3 +146,4 @@ if __name__ == '__main__':
     normalize_token_kind(input_file, output_file)
 
 
+

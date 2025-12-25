@@ -1,0 +1,922 @@
+{
+  "meta": {
+    "schema": "QPM-v2",
+    "sphere": "Quantum Prognosis Monthly",
+    "tone": "2025-12",
+    "version": "2.0",
+    "status": "canonical",
+    "notes": "QPM v2 raw month canvas before HF calculation"
+  },
+  "library": [
+    {
+      "word": "ДВЕТЫСЯЧИДВАДЦАТЬПЯТЫЙГОД",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025 | YEAR",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ДЕКАБРЬ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12 | MONTH",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ПЕРВОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-01 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ВТОРОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-02 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ТРЕТЬЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-03 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ЧЕТВЁРТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-04 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ПЯТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-05 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ШЕСТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-06 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "СЕДЬМОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-07 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ВОСЬМОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-08 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ДЕВЯТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-09 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ДЕСЯТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-10 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ОДИННАДЦАТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-11 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ДВЕНАДЦАТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-12 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ТРИНАДЦАТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-13 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ЧЕТЫРНАДЦАТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-14 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ПЯТНАДЦАТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-15 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ШЕСТНАДЦАТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-16 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "СЕМНАДЦАТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-17 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ВОСЕМНАДЦАТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-18 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ДЕВЯТНАДЦАТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-19 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ДВАДЦАТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-20 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ДВАДЦАТЬПЕРВОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-21 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ДВАДЦАТЬВТОРОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-22 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ДВАДЦАТЬТРЕТЬЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-23 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ДВАДЦАТЬЧЕТВЁРТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-24 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ДВАДЦАТЬПЯТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-25 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ДВАДЦАТЬШЕСТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-26 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ДВАДЦАТЬСЕДЬМОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-27 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ДВАДЦАТЬВОСЬМОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-28 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ДВАДЦАТЬДЕВЯТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-29 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ТРИДЦАТОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-30 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ТРИДЦАТЬПЕРВОЕДЕКАБРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TIME",
+      "role": "temporal",
+      "notes": "2025-12-31 | DAY",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ГЕОМАГНИТНЫЙШТОРМ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "MAGNETIC",
+      "role": "marker",
+      "notes": "2025-12 | MAGNETIC | storm-watch | daylink:ДЕВЯТОЕДЕКАБРЯ",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "МАГНИТНАЯБУРЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "MAGNETIC",
+      "role": "marker",
+      "notes": "2025-12 | MAGNETIC | storm-activity",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "КППЯТЬПОРОГ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "MAGNETIC",
+      "role": "signal",
+      "notes": "2025-12 | MAGNETIC | geomagnetic-threshold",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "КОРОНАЛЬНЫЙПОТОК",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "MAGNETIC",
+      "role": "signal",
+      "notes": "2025-12 | MAGNETIC | high-speed-stream",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ВОЗМУЩЕНИЕМАГНИТОСФЕРЫ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "MAGNETIC",
+      "role": "signal",
+      "notes": "2025-12 | MAGNETIC | disturbance",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ПОМЕХИ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "MAGNETIC",
+      "role": "signal",
+      "notes": "2025-12 | MAGNETIC | interference",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "НАПРЯЖЕНИЕ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "MAGNETIC",
+      "role": "state",
+      "notes": "2025-12 | MAGNETIC | baseline-stress",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "НЕСТАБИЛЬНОСТЬРИТМА",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "MAGNETIC",
+      "role": "state",
+      "notes": "2025-12 | MAGNETIC | variability",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ПОЛНОЛУНИЕ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "LUNAR",
+      "role": "marker",
+      "notes": "2025-12 | LUNAR | peak | daylink:ПЯТОЕДЕКАБРЯ",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "СУПЕРПОЛНОЛУНИЕ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "LUNAR",
+      "role": "marker",
+      "notes": "2025-12 | LUNAR | amplification | daylink:ПЯТОЕДЕКАБРЯ",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "НОВОЛУНИЕ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "LUNAR",
+      "role": "marker",
+      "notes": "2025-12 | LUNAR | reset | daylink:ДВАДЦАТОЕДЕКАБРЯ",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "РАСТУЩАЯЛУНА",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "LUNAR",
+      "role": "signal",
+      "notes": "2025-12 | LUNAR | build-up",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "УБЫВАЮЩАЯЛУНА",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "LUNAR",
+      "role": "signal",
+      "notes": "2025-12 | LUNAR | release",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ЛУННЫЙПИК",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "LUNAR",
+      "role": "signal",
+      "notes": "2025-12 | LUNAR | intensity",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ЛУННЫЙСДВИГ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "LUNAR",
+      "role": "signal",
+      "notes": "2025-12 | LUNAR | transition",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ЭМКЛАССВСПЫШКА",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "SOLAR",
+      "role": "signal",
+      "notes": "2025-12 | SOLAR | mid-flare",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "СОЛНЕЧНЫЕВСПЫШКИ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "SOLAR",
+      "role": "signal",
+      "notes": "2025-12 | SOLAR | flare-activity",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "СОЛНЕЧНЫЙИМПУЛЬС",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "SOLAR",
+      "role": "signal",
+      "notes": "2025-12 | SOLAR | impulse",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "КОРОНАЛЬНЫЙВЫБРОС",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "SOLAR",
+      "role": "signal",
+      "notes": "2025-12 | SOLAR | CME",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "АКТИВНЫЕПЯТНА",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "SOLAR",
+      "role": "state",
+      "notes": "2025-12 | SOLAR | sunspots",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "СОЛНЕЧНАЯРАДИАЦИЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "SOLAR",
+      "role": "state",
+      "notes": "2025-12 | SOLAR | radiation",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "УЛЬТРАФИОЛЕТ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "SOLAR",
+      "role": "state",
+      "notes": "2025-12 | SOLAR | UV",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "СЛАБАЯЛАНИНЬЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "EARTH",
+      "role": "state",
+      "notes": "2025-12 | EARTH | ENSO weak La Nina regime",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ЦИРКУЛЯЦИОННАЯАНОМАЛИЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "EARTH",
+      "role": "state",
+      "notes": "2025-12 | EARTH | atmospheric circulation shifts",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ТЕМПЕРАТУРНЫЕАНОМАЛИИ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "EARTH",
+      "role": "state",
+      "notes": "2025-12 | EARTH | surface temperature deviations",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ТЕМПЕРАТУРАПОВЕРХНОСТИОКЕАНА",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "EARTH",
+      "role": "state",
+      "notes": "2025-12 | EARTH | sea surface temperature regime",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ВЕТРОВЫЕАНОМАЛИИ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "EARTH",
+      "role": "signal",
+      "notes": "2025-12 | EARTH | wind pattern deviations",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ОСАДОЧНЫЕАНОМАЛИИ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "EARTH",
+      "role": "signal",
+      "notes": "2025-12 | EARTH | precipitation variability",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ОКЕАНАТМОСФЕРНАЯСВЯЗНОСТЬ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "EARTH",
+      "role": "state",
+      "notes": "2025-12 | EARTH | ocean-atmosphere coupling",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ТЕХНОУСКОРЕНИЕ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TECHNOLOGY",
+      "role": "signal",
+      "notes": "2025-12 | TECHNOLOGY | acceleration",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ТЕХНОЛОГИЧЕСКАЯИНТЕГРАЦИЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TECHNOLOGY",
+      "role": "signal",
+      "notes": "2025-12 | TECHNOLOGY | system-integration",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ТЕХНООРКЕСТРАЦИЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TECHNOLOGY",
+      "role": "signal",
+      "notes": "2025-12 | TECHNOLOGY | orchestration",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ТЕХНОАВТОМАТИЗАЦИЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TECHNOLOGY",
+      "role": "signal",
+      "notes": "2025-12 | TECHNOLOGY | automation",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "РЕГУЛЯТОРНАЯПЛОТНОСТЬ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TECHNOLOGY",
+      "role": "state",
+      "notes": "2025-12 | TECHNOLOGY | regulation-load",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ИНФРАСТРУКТУРНАЯНАДЁЖНОСТЬ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TECHNOLOGY",
+      "role": "state",
+      "notes": "2025-12 | TECHNOLOGY | reliability-baseline",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ПЛАТФОРМЕННАЯСТАНДАРТИЗАЦИЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TECHNOLOGY",
+      "role": "state",
+      "notes": "2025-12 | TECHNOLOGY | stack-standardization",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ИНФРАСТРУКТУРНАЯИНЕРЦИЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "TECHNOLOGY",
+      "role": "state",
+      "notes": "2025-12 | TECHNOLOGY | capacity-inertia",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ЗАКРЫТИЕФИНАНСОВОГОГОДА",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "FINANCE",
+      "role": "marker",
+      "notes": "2025-12 | FINANCE | year-close",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ФИНАНСОВОЕПЕРЕРАСПРЕДЕЛЕНИЕ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "FINANCE",
+      "role": "signal",
+      "notes": "2025-12 | FINANCE | flow-redistribution",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ЛИКВИДНОСТНЫЙРЕЖИМ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "FINANCE",
+      "role": "signal",
+      "notes": "2025-12 | FINANCE | liquidity-mode",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ФИНАНСОВЫЕРАСЧЁТЫ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "FINANCE",
+      "role": "signal",
+      "notes": "2025-12 | FINANCE | settlements",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "РЫНОЧНАЯПЕРЕОЦЕНКА",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "FINANCE",
+      "role": "state",
+      "notes": "2025-12 | FINANCE | rebalancing",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ФИНАНСОВЫЕОГРАНИЧЕНИЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "FINANCE",
+      "role": "state",
+      "notes": "2025-12 | FINANCE | constraints",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ПЛАТЁЖНАЯСПОСОБНОСТЬ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "FINANCE",
+      "role": "state",
+      "notes": "2025-12 | FINANCE | solvency",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "МЕДИЙНЫЙПИК",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "ATTENTION",
+      "role": "marker",
+      "notes": "2025-12 | ATTENTION | seasonal-peak",
+      "token_kind": "EVENT"
+    },
+    {
+      "word": "ПЕРЕГРУЗИНФОПОЛЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "ATTENTION",
+      "role": "signal",
+      "notes": "2025-12 | ATTENTION | information-overload",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "СМЕЩЕНИЕФОКУСА",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "ATTENTION",
+      "role": "signal",
+      "notes": "2025-12 | ATTENTION | focus-shift",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ФРАГМЕНТАЦИЯВНИМАНИЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "ATTENTION",
+      "role": "signal",
+      "notes": "2025-12 | ATTENTION | fragmentation",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ИНФОРМАЦИОННЫЙШУМ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "ATTENTION",
+      "role": "state",
+      "notes": "2025-12 | ATTENTION | noise-baseline",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "РАССЕЯННОСТЬВНИМАНИЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "ATTENTION",
+      "role": "state",
+      "notes": "2025-12 | ATTENTION | diffusion",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ВНИМАНИЕВОВЛЕЧЕНИЕ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "ATTENTION",
+      "role": "state",
+      "notes": "2025-12 | ATTENTION | engagement-baseline",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ВНУТРЕННЕЕНАПРЯЖЕНИЕ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "PSY",
+      "role": "state",
+      "notes": "2025-12 | PSY | baseline",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ЭМОЦИОНАЛЬНАЯУСТАЛОСТЬ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "PSY",
+      "role": "state",
+      "notes": "2025-12 | PSY | accumulation",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ПЕРЕГРУЗВОСПРИЯТИЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "PSY",
+      "role": "state",
+      "notes": "2025-12 | PSY | information-load",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ПОВЫШЕННАЯЧУВСТВИТЕЛЬНОСТЬ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "PSY",
+      "role": "state",
+      "notes": "2025-12 | PSY | reactivity",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "САМОРЕФЛЕКСИЯ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "PSY",
+      "role": "signal",
+      "notes": "2025-12 | PSY | inward-turn",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ПЕРЕОСМЫСЛЕНИЕ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "PSY",
+      "role": "signal",
+      "notes": "2025-12 | PSY | cognitive-shift",
+      "token_kind": "LEXEME"
+    },
+    {
+      "word": "ПОИСКОПОРЫ",
+      "sphere": "Quantum Prognosis Monthly",
+      "tone": "2025-12",
+      "allowed": true,
+      "field": "PSY",
+      "role": "signal",
+      "notes": "2025-12 | PSY | stabilization-attempt",
+      "token_kind": "LEXEME"
+    }
+  ]
+}

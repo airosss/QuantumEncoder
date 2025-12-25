@@ -1574,6 +1574,15 @@ def _ensure_lib_loaded() -> Tuple[bool, str]:
             return False, f"Auto-merge: не удалось загрузить из spheres/ ({type(e).__name__})"
     return False, "Auto-merge: в памяти уже есть библиотека"
 
+def get_all_qpm_months() -> List[str]:
+    """Возвращает список уникальных месяцев (tone) из сферы 'Quantum Prognosis Monthly'."""
+    _ensure_lib_loaded()
+    if LIB_DF is None or LIB_DF.empty:
+        return []
+    df = LIB_DF[LIB_DF["sphere"] == "Quantum Prognosis Monthly"]
+    months = sorted({str(t).strip() for t in df["tone"].dropna() if str(t).strip()})
+    return months
+
 def add_words_to_library(raw_text: str, sphere_choice: str, create_new: bool, new_sphere: str):
     global LIB_DF
     was_loaded, auto_msg = _ensure_lib_loaded()
@@ -2948,11 +2957,16 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
             gr.Markdown("#### Экспорт по месяцу (tone)")
             
             with gr.Row():
-                month_tone_input = gr.Textbox(
+                month_tone_input = gr.Dropdown(
                     label="Месяц (tone)",
-                    placeholder="2025-12",
-                    value="",
+                    choices=[],
+                    value=None,
                     scale=3
+                )
+                refresh_months_btn = gr.Button(
+                    "Обновить месяцы",
+                    variant="secondary",
+                    scale=1
                 )
                 month_export_btn = gr.Button(
                     "Сформировать JSON месяца",
@@ -2985,7 +2999,12 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                 if df_filtered.empty:
                     return f"Не найдены записи для месяца '{target_tone}' в сфере 'Quantum Prognosis Monthly'.", None
                 
-                # Формируем items в формате HF-import
+                # Страховка: если колонок метрик нет, добавляем их как None
+                for c in ["l1", "l2c", "w", "C", "Hm", "Z"]:
+                    if c not in df_filtered.columns:
+                        df_filtered[c] = None
+                
+                # Формируем items в формате HF-import с полными метриками
                 items = []
                 for _, r in df_filtered.iterrows():
                     token_kind_val = r.get("token_kind", None)
@@ -3007,6 +3026,12 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                         "field": field_val,
                         "role": role_val,
                         "notes": "" if pd.isna(r.get("notes")) else str(r.get("notes")).strip(),
+                        "l1": safe_int(r.get("l1", None), 0),
+                        "l2c": safe_int(r.get("l2c", None), 0),
+                        "w": safe_float(r.get("w", None), 0.0),
+                        "C": safe_float(r.get("C", None), 0.0),
+                        "Hm": safe_float(r.get("Hm", None), 0.0),
+                        "Z": safe_float(r.get("Z", None), 0.0),
                         "token_kind": token_kind_val
                     })
                 
@@ -3055,6 +3080,7 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                     "generated_at": datetime.datetime.utcnow().isoformat() + "Z",
                     "encoder_version": ENCODER_VERSION,
                     "target_tone": target_tone,
+                    "export_mode": "FULL_POST_HF",
                     "counts": {
                         "total": total,
                         "by_field": by_field,
@@ -3087,6 +3113,15 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
                 
                 return status_msg, path
 
+            def _ui_refresh_months():
+                return gr.update(choices=get_all_qpm_months(), value=None)
+            
+            refresh_months_btn.click(
+                _ui_refresh_months,
+                inputs=None,
+                outputs=[month_tone_input]
+            )
+            
             month_export_btn.click(
                 handle_export_month,
                 inputs=[month_tone_input],
@@ -3099,18 +3134,20 @@ with gr.Blocks(css=CUSTOM_CSS) as demo:
             rebuild_indexes(LIB_DF)
         stats_str = compute_base_indicator()
         spheres_update = gr.update(choices=get_all_spheres(), value=None)
+        months_update = gr.update(choices=get_all_qpm_months(), value=None)
         return (
             spheres_update,   # для sphere_dd
             spheres_update,   # для sphere_export_dd
             stats_str,
             stats_str,
-            stats_str
+            stats_str,
+            months_update     # для month_tone_input
         )
 
     demo.load(
         _init_controls,
         inputs=None,
-        outputs=[sphere_dd, sphere_export_dd, base_indicator, phrase_base_indicator, library_base_indicator]
+        outputs=[sphere_dd, sphere_export_dd, base_indicator, phrase_base_indicator, library_base_indicator, month_tone_input]
     )
 
     demo.queue().launch()

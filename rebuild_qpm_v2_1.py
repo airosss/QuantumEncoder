@@ -266,3 +266,4 @@ if __name__ == '__main__':
     print(f"  Слова с суффиксом дня (non-TIME): {sanity['count_non_time_words_with_day_suffix']} (должно быть 0)")
 
 
+
